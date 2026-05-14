@@ -155,7 +155,7 @@ export default function GameDashboard() {
       return;
     }
     const playersInGame = gameState.players.filter(p => p.id !== '');
-    if (playersInGame.length === 0) return alert("Chưa có ai chơi!");
+    if (playersInGame.length === 0) return alert("Cần ít nhất 1 người chơi để bắt đầu!");
     if (playersInGame.some(p => p.currentBet <= 0)) return alert("Còn người chưa cược!");
 
     let newDeck = shuffle(createDeck());
