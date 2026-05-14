@@ -1,19 +1,33 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { AvatarPicker } from '../ui/AvatarPicker';
+import { AdminPanel } from './AdminPanel';
 import { PRESET_AVATARS } from '../../lib/constants';
 
 export function PlatformShell() {
-  const { profile, setProfile } = useAuth();
+  const { profile, setProfile, isAdmin } = useAuth();
   const pathname = usePathname();
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const isInGame = pathname !== '/';
+
+  // Ctrl + / to toggle admin panel (only for admin)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === '/') {
+        e.preventDefault();
+        if (isAdmin) setShowAdmin(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isAdmin]);
 
   return (
     <>
@@ -72,6 +86,10 @@ export function PlatformShell() {
             setShowAvatarPicker(false);
           }}
         />
+      )}
+
+      {showAdmin && isAdmin && (
+        <AdminPanel onClose={() => setShowAdmin(false)} />
       )}
     </>
   );

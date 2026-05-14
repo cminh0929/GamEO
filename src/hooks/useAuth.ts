@@ -3,5 +3,9 @@
 import { useAuthContext } from '../contexts/AuthContext';
 
 export function useAuth() {
-  return useAuthContext();
+  const context = useAuthContext();
+  return {
+    ...context,
+    isAdmin: context.profile?.username === 'admin'
+  };
 }
