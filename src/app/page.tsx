@@ -47,7 +47,14 @@ export default function GameDashboard() {
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (data) setProfile(data);
+    if (data) {
+      if (data.balance === 0) {
+        const { data: updated } = await supabase.from('profiles').update({ balance: 10000000 }).eq('id', userId).select().single();
+        if (updated) setProfile(updated);
+      } else {
+        setProfile(data);
+      }
+    }
   };
 
   useEffect(() => {
