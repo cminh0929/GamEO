@@ -33,18 +33,27 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({ currentAvatar, userI
         .from('avatars')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
+      const publicUrl = data.publicUrl;
+
       const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId);
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Profile update error:', updateError);
+        throw updateError;
+      }
 
       onUpdate(publicUrl);
     } catch (error: any) {
-      alert('Lỗi tải ảnh: ' + error.message);
+      console.error('Full process error:', error);
+      alert('Lỗi tải ảnh: ' + (error.message || 'Không xác định'));
     } finally {
       setUploading(false);
     }
