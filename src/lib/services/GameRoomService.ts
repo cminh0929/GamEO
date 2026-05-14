@@ -15,8 +15,7 @@ export class GameRoomService {
   static async updateGameState(roomId: string, gameState: GameState): Promise<void> {
     await supabase
       .from('game_rooms')
-      .update({ game_state: gameState })
-      .eq('id', roomId);
+      .upsert({ id: roomId, game_state: gameState });
   }
 
   static subscribeToRoom(
