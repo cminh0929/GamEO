@@ -384,6 +384,23 @@ export default function GameDashboard() {
               return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
             })}
           </div>
+
+          {/* Điểm Nhà Cái - Chỉ hiện khi được phép */}
+          {gameState.dealer.hand.length > 0 && (gameState.dealer.id === profile?.id || gameState.status === 'ended' || gameState.players.some(p => p.id === profile?.id && p.isChecked)) && (
+            <div className="score-pill" style={{
+              background: 'rgba(212,175,55,0.2)', color: 'var(--gold)', padding: '2px 10px',
+              borderRadius: '10px', fontSize: '0.7rem', marginTop: '5px', border: '1px solid var(--gold)',
+              display: 'inline-block', fontWeight: 'bold'
+            }}>
+              {(() => {
+                const special = checkSpecialHands(gameState.dealer);
+                if (special === 'xi_bang') return 'XÌ BÀNG 🔥';
+                if (special === 'xi_dach') return 'XÌ DÁCH 🃏';
+                const score = calculateScore(gameState.dealer.hand);
+                return score > 21 ? `QUẮC (${score})` : `${score} NÚT`;
+              })()}
+            </div>
+          )}
           {gameState.dealer.id === '' ? (
             !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
             <button className="btn btn-gold" style={{ padding: '0.5rem 1.5rem', fontSize: '0.9rem' }} onClick={() => takeRole('dealer')}>Làm Cái 👑</button>
@@ -417,6 +434,24 @@ export default function GameDashboard() {
                   return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
                 }) : player.id !== '' ? <div style={{ fontSize: '0.65rem', opacity: 0.5, textAlign: 'center', width: '100%' }}>{gameState.status === 'betting' ? '⌛ Chờ cược...' : '💤 Chờ ván sau...'}</div> : null}
               </div>
+
+              {/* Điểm Người chơi - Chỉ hiện khi được phép */}
+              {player.hand.length > 0 && (player.id === profile?.id || player.isChecked || gameState.status === 'ended') && (
+                <div className="score-pill" style={{
+                  background: 'rgba(255,255,255,0.1)', color: 'white', padding: '2px 8px',
+                  borderRadius: '10px', fontSize: '0.65rem', marginTop: '5px', border: '1px solid rgba(255,255,255,0.2)',
+                  display: 'inline-block'
+                }}>
+                  {(() => {
+                    const special = checkSpecialHands(player);
+                    if (special === 'xi_bang') return 'XÌ BÀNG 🔥';
+                    if (special === 'xi_dach') return 'XÌ DÁCH 🃏';
+                    if (special === 'ngu_linh') return 'NGŨ LINH ✨';
+                    const score = calculateScore(player.hand);
+                    return score > 21 ? `QUẮC (${score})` : `${score} NÚT`;
+                  })()}
+                </div>
+              )}
               {player.id === '' ? (
                 !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
                 (gameState.status !== 'playing' ? <button className="btn-xet" onClick={() => takeRole('player', idx)}>Ngồi đây</button> : <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Trong ván...</div>)
