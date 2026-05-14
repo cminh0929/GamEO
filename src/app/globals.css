@@ -225,6 +225,37 @@ body {
   margin-bottom: 5px;
 }
 
+.bet-display {
+  color: #2ecc71;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.bet-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: white;
+  font-size: 0.8rem;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.bet-input:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.bet-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
 /* Sidebar */
 .transaction-sidebar {
   position: fixed;
