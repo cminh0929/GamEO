@@ -279,8 +279,9 @@ export default function GameDashboard() {
       alert(`BẠN BỊ ĐỀN NGUYÊN BÀN! Mất tổng cộng $${totalTableBet.toLocaleString()} cho Nhà Cái.`);
       updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: 'bust', isChecked: true };
     } else {
-      // Vẫn cho phép rút tiếp nếu chưa đủ 5 lá và chưa tới 28đ
-      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: newScore > 21 ? 'bust' : 'playing' };
+      // Vẫn để 'playing' để người chơi có thể rút tiếp dù đã > 21, 
+      // trừ khi đã đủ 5 lá thì chuyển sang 'stay' để kết thúc lượt
+      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: isMaxCards ? 'stay' : 'playing' };
     }
     
     let nextState = { ...gameState, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
@@ -314,7 +315,7 @@ export default function GameDashboard() {
       if (dealerSpecial === playerSpecial) result = 'draw';
       else { result = 'win'; if (playerSpecial === 'xi_bang') multiplier = 4; else if (playerSpecial === 'xi_dach') multiplier = 3; }
     } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') { result = 'lose'; }
-    else if (player.status === 'bust') { result = 'lose'; }
+    else if (player.score > 21) { result = 'lose'; } // Sửa lỗi: Check điểm trực tiếp thay vì status
     else if (playerSpecial === 'ngu_linh') { if (dealerSpecial === 'ngu_linh') result = 'draw'; else { result = 'win'; multiplier = 2; } }
     else if (dealerScore > 21) { result = 'win'; }
     else if (dealerScore > player.score) { result = 'lose'; }
