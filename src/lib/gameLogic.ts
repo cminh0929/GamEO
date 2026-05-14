@@ -32,6 +32,7 @@ export const calculateScore = (hand: CardType[]): number => {
   let score = 0;
   let aceCount = 0;
 
+  // Tính điểm các lá bài không phải Át trước
   for (const card of hand) {
     if (card.rank === 'A') {
       aceCount++;
@@ -40,25 +41,15 @@ export const calculateScore = (hand: CardType[]): number => {
     score += getCardValue(card.rank);
   }
 
-  // Logic tính Át (A) linh hoạt theo số lá bài
-  if (aceCount > 0) {
-    if (hand.length === 2) {
-      // 2 lá: A tính 11 (hoặc 10 nếu có 2 con A)
-      if (aceCount === 1) score += 11;
-      else score += 11 + 1; // 1 con 11, 1 con 1 (tổng 12 - Xì Bàng)
-    } else if (hand.length === 3) {
-      // 3 lá: A tính 10
-      score += aceCount * 10;
-    } else {
-      // 4-5 lá: A tính 1
-      score += aceCount * 1;
-    }
-  }
+  // Cộng mỗi con Át ít nhất 1 điểm
+  score += aceCount;
 
-  // Tối ưu hóa lần cuối nếu vẫn quắc (cho trường hợp 3 lá A=10 bị quá 21)
-  while (score > 21 && aceCount > 0 && hand.length === 3) {
-    score -= 9; // Chuyển từ 10 về 1
-    aceCount--;
+  // Với mỗi con Át, thử cộng thêm 10 điểm (để biến nó thành 11)
+  // nếu tổng điểm vẫn không vượt quá 21
+  for (let i = 0; i < aceCount; i++) {
+    if (score + 10 <= 21) {
+      score += 10;
+    }
   }
 
   return score;
