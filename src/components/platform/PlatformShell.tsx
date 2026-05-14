@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { AvatarPicker } from '../ui/AvatarPicker';
 import { AdminPanel } from './AdminPanel';
+import { TCChat } from './TCChat';
 import { PRESET_AVATARS } from '../../lib/constants';
 
 export function PlatformShell() {
@@ -91,6 +92,9 @@ export function PlatformShell() {
       {showAdmin && isAdmin && (
         <AdminPanel onClose={() => setShowAdmin(false)} />
       )}
+
+      {/* Floating chat — available on every page */}
+      <TCChat />
     </>
   );
 }

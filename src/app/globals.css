@@ -1282,21 +1282,85 @@ body {
   top: calc(100% + 6px);
 }
 
-/* ============================================================
-   TCCHAT — Kênh chat nội bộ (Lobby)
-   ============================================================ */
-.tcchat-section {
-  max-width: 760px;
-  margin: 0 auto 48px;
-  padding: 0 20px;
+/* ── Float panel ── */
+.tcchat-float-panel {
+  width: 320px;
+  background: rgba(10, 10, 18, 0.97);
+  border: 1px solid rgba(212,175,55,0.25);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  overflow: hidden;
 }
 
-.tcchat-title {
-  font-size: 1.1rem;
-  font-weight: 800;
+.tcchat-float-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(212,175,55,0.07);
+  border-bottom: 1px solid rgba(212,175,55,0.15);
+  cursor: grab;
+  font-size: 0.85rem;
+  font-weight: 700;
   color: var(--gold);
-  margin-bottom: 12px;
-  letter-spacing: 0.5px;
+  user-select: none;
+}
+.tcchat-float-header:active { cursor: grabbing; }
+
+.tcchat-float-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 4px;
+  transition: color 0.15s;
+}
+.tcchat-float-close:hover { color: #ff6666; }
+
+/* ── FAB button ── */
+.tcchat-fab {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d4af37, #b8860b);
+  border: none;
+  color: #000;
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(212,175,55,0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.tcchat-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 10px 28px rgba(212,175,55,0.55);
+}
+
+/* ── Unread badge ── */
+.tcchat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 900;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #000;
 }
 
 .tcchat-box {
