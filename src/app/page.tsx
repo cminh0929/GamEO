@@ -28,7 +28,7 @@ export default function GameDashboard() {
   const [lastKeyPressed, setLastKeyPressed] = useState<string>('');
   const [logs, setLogs] = useState<TransactionLog[]>([]);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-  
+
   const [gameState, setGameState] = useState<GameState>({
     deck: [],
     dealer: { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 },
@@ -73,8 +73,8 @@ export default function GameDashboard() {
 
   const subscribeToProfileChanges = (userId: string) => {
     supabase.channel(`profile-${userId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` }, 
-      (payload) => setProfile(payload.new)).subscribe();
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        (payload) => setProfile(payload.new)).subscribe();
   };
 
   // --- 2. HỆ THỐNG TÀI CHÍNH ( TRANSACTION LOGS ) ---
@@ -85,14 +85,19 @@ export default function GameDashboard() {
 
   const executeTransaction = async (userId: string, amount: number, type: string, description: string) => {
     if (!userId) return;
-    // Sử dụng logic cộng dồn an toàn hơn (Nên dùng RPC nếu có thể)
-    const { data: currentProfile } = await supabase.from('profiles').select('balance').eq('id', userId).single();
-    const newBalance = (currentProfile?.balance || 0) + amount;
-    
-    const { error } = await supabase.from('profiles').update({ balance: newBalance }).eq('id', userId);
-    if (!error) {
-      await supabase.from('transaction_logs').insert({ user_id: userId, amount, type, description });
-      fetchLogs(userId);
+    try {
+      const { data: currentProfile, error: fetchError } = await supabase.from('profiles').select('balance').eq('id', userId).single();
+      if (fetchError || !currentProfile) throw new Error("Không tìm thấy profile");
+      
+      const newBalance = (currentProfile.balance || 0) + amount;
+      const { error: updateError } = await supabase.from('profiles').update({ balance: newBalance }).eq('id', userId);
+      
+      if (!updateError) {
+        await supabase.from('transaction_logs').insert({ user_id: userId, amount, type, description });
+        fetchLogs(userId);
+      }
+    } catch (err) {
+      console.error("Transaction Error:", err);
     }
   };
 
@@ -103,7 +108,7 @@ export default function GameDashboard() {
       if (data) setGameState(data.game_state);
     };
     fetchGame();
-    const channel = supabase.channel('room-1').on('postgres_changes', 
+    const channel = supabase.channel('room-1').on('postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'game_rooms', filter: `id=eq.${ROOM_ID}` },
       (payload) => setGameState(payload.new.game_state)
     ).subscribe();
@@ -114,20 +119,23 @@ export default function GameDashboard() {
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      
-      // Timer cho lượt chơi của từng người
       if (gameState.status === 'playing' && gameState.turnDeadline) {
         const diff = Math.max(0, Math.floor((gameState.turnDeadline! - now) / 1000));
         setTimeLeft(diff);
+        // Tự động Dừng nếu hết giờ (chỉ cho người chơi hiện tại)
         const myPlayerIndex = gameState.players.findIndex(p => p.id === profile?.id);
-        if (diff === 0 && gameState.turnIndex === myPlayerIndex) stand(gameState.turnIndex);
+        if (diff === 0 && gameState.turnIndex === myPlayerIndex) {
+          stand(gameState.turnIndex);
+        }
       } else {
         setTimeLeft(0);
       }
-  // --- 4. TỰ ĐỘNG MỜI NHÀ CÁI RỜI BÀN KHI TREO MÁY ---
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [gameState.status, gameState.turnDeadline, gameState.turnIndex, profile?.id]);
+
   useEffect(() => {
     let timer: any;
-    // Nếu có Nhà Cái, bắt đầu đếm ngược từ hành động cuối cùng
     if (gameState.dealer.id !== '') {
       timer = setInterval(() => {
         const now = Date.now();
@@ -135,10 +143,9 @@ export default function GameDashboard() {
         const remaining = 60 - diff;
 
         if (remaining <= 0) {
-          // Hết 60 giây không hành động -> Mời Nhà Cái rời bàn
-          const newState = { ...gameState, status: 'ended', lastActionAt: Date.now() };
+          const newState = { ...gameState, status: 'ended' as GameStatus, lastActionAt: Date.now() };
           newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
-          newState.players.forEach(p => { 
+          newState.players.forEach(p => {
             p.hand = []; p.currentBet = 0; p.gameResult = null; p.isChecked = false; p.status = 'playing';
           });
           updateRemoteState(newState);
@@ -174,11 +181,9 @@ export default function GameDashboard() {
 
   const getNextTurnState = (currentState: GameState) => {
     let nextIdx = currentState.turnIndex + 1;
-    // Tìm người chơi tiếp theo đang ngồi ở ghế
     while (nextIdx < currentState.players.length && currentState.players[nextIdx].id === '') nextIdx++;
-    
+
     if (nextIdx >= currentState.players.length) {
-      // Đã hết người chơi, đến lượt Nhà Cái
       return { ...currentState, turnIndex: -1, turnDeadline: 0 };
     }
     return { ...currentState, turnIndex: nextIdx, turnDeadline: Date.now() + 30000 };
@@ -189,7 +194,7 @@ export default function GameDashboard() {
     if (!profile) return;
     const alreadySeated = gameState.players.some(p => p.id === profile.id) || gameState.dealer.id === profile.id;
     if (alreadySeated) return alert("Bạn đã có vị trí rồi!");
-    
+
     const newState = { ...gameState, lastActionAt: Date.now() };
     if (type === 'dealer') {
       newState.dealer = { ...newState.dealer, id: profile.id, name: `${profile.username} 👑`, balance: profile.balance, avatarUrl: profile.avatar_url };
@@ -215,11 +220,11 @@ export default function GameDashboard() {
       const isRoomActive = gameState.status === 'playing' || gameState.status === 'betting';
       if (isRoomActive) {
         newState.status = 'ended';
-        newState.players.forEach(p => { 
-          p.hand = []; 
-          p.currentBet = 0; 
-          p.gameResult = null; 
-          p.isChecked = false; 
+        newState.players.forEach(p => {
+          p.hand = [];
+          p.currentBet = 0;
+          p.gameResult = null;
+          p.isChecked = false;
           p.status = 'playing';
         });
       }
@@ -256,14 +261,14 @@ export default function GameDashboard() {
 
   const startNewGame = () => {
     if (gameState.dealer.id !== profile?.id) return alert("Chỉ Nhà Cái mới được bắt đầu!");
-    
+
     if (gameState.status !== 'betting') {
       const newState = { ...gameState, status: 'betting' as GameStatus, lastActionAt: Date.now() };
       newState.players.forEach(p => { p.currentBet = 0; p.gameResult = null; p.isChecked = false; p.hand = []; p.status = 'playing'; });
       updateRemoteState(newState);
       return;
     }
-    
+
     const activePlayers = gameState.players.filter(p => p.id !== '');
     if (activePlayers.length === 0) return alert("Cần ít nhất 1 người chơi để bắt đầu!");
     if (activePlayers.some(p => p.currentBet <= 0)) return alert("Còn người chưa cược!");
@@ -277,9 +282,9 @@ export default function GameDashboard() {
     });
 
     const firstPlayerIndex = updatedPlayers.findIndex(p => p.id !== '');
-    updateRemoteState({ 
-      ...gameState, deck: newDeck, 
-      dealer: { ...gameState.dealer, hand: dealerHand as CardType[], score: calculateScore(dealerHand as CardType[]), status: 'playing' }, 
+    updateRemoteState({
+      ...gameState, deck: newDeck,
+      dealer: { ...gameState.dealer, hand: dealerHand as CardType[], score: calculateScore(dealerHand as CardType[]), status: 'playing' },
       players: updatedPlayers, status: 'playing',
       turnIndex: firstPlayerIndex !== -1 ? firstPlayerIndex : 0,
       turnDeadline: Date.now() + 30000,
@@ -291,16 +296,16 @@ export default function GameDashboard() {
     if (gameState.turnIndex !== idx) return;
     const player = gameState.players[idx];
     if (player.hand.length >= 5) return alert("Đã đạt giới hạn tối đa 5 lá bài!");
-    
+
     const newDeck = [...gameState.deck];
     const newCard = newDeck.pop()!;
     const updatedPlayers = [...gameState.players];
     const newHand = [...player.hand, newCard];
     const newScore = calculateScore(newHand);
-    
+
     const isPenalty = newScore >= 28;
     const isMaxCards = newHand.length === 5;
-    
+
     if (isPenalty) {
       const otherPlayers = gameState.players.filter(p => p.id !== '' && p.id !== profile?.id);
       const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + player.currentBet;
@@ -311,10 +316,10 @@ export default function GameDashboard() {
     } else {
       updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: isMaxCards ? 'stay' : 'playing' };
     }
-    
+
     const nextState = { ...gameState, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
     const finalState = (isPenalty || isMaxCards) ? getNextTurnState(nextState) : nextState;
-    
+
     updateRemoteState(finalState);
   };
 
@@ -329,14 +334,14 @@ export default function GameDashboard() {
     if (gameState.dealer.id !== profile?.id) return;
     const dealerScore = calculateScore(gameState.dealer.hand);
     if (dealerScore < 15) return alert("Nhà Cái phải đủ ít nhất 15 điểm mới được quyền XÉT!");
-    
+
     const updatedPlayers = [...gameState.players];
     const player = updatedPlayers[idx];
     const bet = player.currentBet;
     let multiplier = 1;
     const playerSpecial = checkSpecialHands(player);
     const dealerSpecial = checkSpecialHands(gameState.dealer);
-    
+
     let result: 'win' | 'lose' | 'draw' = 'draw';
     if (playerSpecial === 'xi_bang' || playerSpecial === 'xi_dach') {
       if (dealerSpecial === playerSpecial) result = 'draw';
@@ -359,10 +364,10 @@ export default function GameDashboard() {
     }
 
     const finalWinAmount = bet * multiplier;
-    if (result === 'win') { 
+    if (result === 'win') {
       await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${playerSpecial || player.score + 'đ'}) x${multiplier}`);
       await executeTransaction(gameState.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
-    } else if (result === 'lose') { 
+    } else if (result === 'lose') {
       await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
       await executeTransaction(gameState.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
     }
@@ -406,7 +411,7 @@ export default function GameDashboard() {
         <div className="table-felt">
           <div className="felt-inner">
             <div className="table-logo">GAMEO PREMIUM</div>
-            
+
             {/* Khu vực Nhà Cái */}
             <div className="dealer-area">
               <div className="dealer-info">
@@ -419,7 +424,7 @@ export default function GameDashboard() {
                 {gameState.dealer.id ? (
                   <span className="dealer-balance">${gameState.dealer.balance.toLocaleString()}</span>
                 ) : (
-                  !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
+                  !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) &&
                   <button className="btn-sit dealer" onClick={() => takeRole('dealer')}>LÀM NHÀ CÁI 👑</button>
                 )}
               </div>
@@ -486,7 +491,7 @@ export default function GameDashboard() {
             {/* Controls & Bet */}
             <div className="player-footer">
               {player.id === '' ? (
-                !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
+                !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) &&
                 <button className="btn-sit" onClick={() => takeRole('player', idx)}>Ngồi đây</button>
               ) : (
                 <>
@@ -538,8 +543,8 @@ export default function GameDashboard() {
       )}
 
       {showAvatarPicker && profile && (
-        <AvatarPicker 
-          userId={profile.id} 
+        <AvatarPicker
+          userId={profile.id}
           currentAvatar={profile.avatar_url}
           onClose={() => setShowAvatarPicker(false)}
           onUpdate={(url) => {
