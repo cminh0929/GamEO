@@ -83,20 +83,22 @@ h1 {
 }
 
 .player-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 15px;
-  border: 1px solid transparent;
+  gap: 10px;
+  min-height: 180px;
   transition: all 0.3s ease;
+  position: relative;
 }
 
 .player-box.active {
-  border-color: var(--gold);
-  box-shadow: 0 0 15px var(--gold);
+  border: 1px solid #2ecc71;
+  box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
 }
 
 .player-box.checked {
@@ -105,9 +107,10 @@ h1 {
 }
 
 .player-box.highlight-turn {
-  border: 2px solid var(--gold);
+  border: 2px solid var(--gold) !important;
   animation: pulse-turn 1.5s infinite;
-  background: rgba(212, 175, 55, 0.1);
+  background: rgba(212, 175, 55, 0.15);
+  z-index: 10;
 }
 
 @keyframes pulse-turn {

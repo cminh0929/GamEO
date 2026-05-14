@@ -75,6 +75,10 @@ export default function GameDashboard() {
   };
 
   const takeRole = (type: 'dealer' | 'player', index?: number) => {
+    // Kiểm tra nếu đã ngồi ở đâu đó rồi (tránh ngồi nhiều ghế)
+    const alreadySeated = gameState.players.some(p => p.id === myId) || gameState.dealer.id === myId;
+    if (alreadySeated) return alert("Bạn đã có vị trí trong bàn rồi! Vui lòng 'Rời chỗ' nếu muốn đổi vị trí.");
+
     const name = prompt("Nhập tên của bạn:", myName || "Người chơi mới");
     if (!name) return;
     setMyName(name);
@@ -156,6 +160,7 @@ export default function GameDashboard() {
 
   const isDealer = gameState.dealer.id === myId;
   const myPlayerIndex = gameState.players.findIndex(p => p.id === myId);
+  const hasRole = isDealer || myPlayerIndex !== -1;
   const isMyTurn = gameState.turnIndex === myPlayerIndex && gameState.status === 'playing';
 
   const nextTurn = (currentState: GameState) => {
@@ -215,15 +220,19 @@ export default function GameDashboard() {
           <div style={{ background: 'var(--gold)', color: 'black', padding: '5px 15px', borderRadius: '10px', fontWeight: 'bold' }}>
             {isDealer ? 'NHÀ CÁI 👑' : myPlayerIndex !== -1 ? `${gameState.players[myPlayerIndex].name} 👤` : 'CHƯA CHỌN CHỖ'}
           </div>
-          {(isDealer || myPlayerIndex !== -1) && <button className="btn-xet" style={{ background: '#e63946', color: 'white' }} onClick={leaveRole}>Rời chỗ</button>}
+          {hasRole && <button className="btn-xet" style={{ background: '#e63946', color: 'white' }} onClick={leaveRole}>Rời chỗ</button>}
         </div>
       </div>
       
       <div className="table-area">
+        {/* Dealer Section */}
         <div className="dealer-section">
           <div className="score-badge">{gameState.dealer.name}</div>
           <div className="hand">{gameState.dealer.hand.map((card, i) => <Card key={i} card={card} index={i} />)}</div>
-          {gameState.dealer.id === '' ? <button className="btn-xet" onClick={() => takeRole('dealer')}>Làm Cái 👑</button> : isDealer && (
+          
+          {gameState.dealer.id === '' ? (
+            !hasRole && <button className="btn-xet" onClick={() => takeRole('dealer')}>Làm Cái 👑</button>
+          ) : isDealer && (
             <div className="controls" style={{ marginTop: '10px' }}>
               <button className="btn-xet" onClick={() => updateRemoteState({...gameState, dealer: {...gameState.dealer, hand: [...gameState.dealer.hand, gameState.deck.pop()!]}})}>Rút bài Cái</button>
               <button className="btn-xet" style={{ marginLeft: '10px' }} onClick={() => updateRemoteState({...gameState, dealer: {...gameState.dealer, hand: gameState.dealer.hand.map(c => ({...c, isRevealed: true}))}})}>Mở bài Cái</button>
@@ -231,6 +240,7 @@ export default function GameDashboard() {
           )}
         </div>
 
+        {/* Players Grid */}
         <div className="players-grid">
           {gameState.players.map((player, idx) => (
             <div key={idx} className={`player-box ${player.id === myId ? 'active' : ''} ${gameState.turnIndex === idx ? 'highlight-turn' : ''}`}>
@@ -249,7 +259,13 @@ export default function GameDashboard() {
               </div>
 
               {player.id === '' ? (
-                gameState.status !== 'playing' ? <button className="btn-xet" onClick={() => takeRole('player', idx)}>Ngồi đây</button> : <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Trong ván...</div>
+                !hasRole && (
+                  gameState.status !== 'playing' ? (
+                    <button className="btn-xet" onClick={() => takeRole('player', idx)}>Ngồi đây</button>
+                  ) : (
+                    <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Trong ván...</div>
+                  )
+                )
               ) : (
                 <>
                   {player.currentBet > 0 && <div style={{ fontSize: '0.7rem', color: 'var(--gold)' }}>Cược: ${player.currentBet}</div>}
@@ -264,7 +280,7 @@ export default function GameDashboard() {
                           <button className="btn-xet" onClick={() => hit(idx)}>Rút</button>
                           <button className="btn-xet" onClick={() => stand(idx)}>Dừng</button>
                         </div>
-                      ) : <div style={{ fontSize: '0.6rem', color: 'var(--gold)' }}>Đợi...</div>}
+                      ) : player.hand.length > 0 && <div style={{ fontSize: '0.6rem', color: 'var(--gold)' }}>Đợi...</div>}
                     </div>
                   )}
                   
