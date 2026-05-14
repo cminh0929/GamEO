@@ -271,8 +271,6 @@ export default function GameDashboard() {
     const isPenalty = newScore >= 28;
     const isMaxCards = newHand.length === 5;
     
-    const updatedPlayers = [...gameState.players];
-    
     if (isPenalty) {
       const otherPlayers = gameState.players.filter(p => p.id !== '' && p.id !== profile.id);
       const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + player.currentBet;
