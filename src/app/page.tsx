@@ -352,128 +352,143 @@ export default function GameDashboard() {
   if (!session) return <Auth onSession={setSession} />;
 
   return (
-    <main>
-      <div className="table-area"></div>
-      
-      {/* Timer cảnh báo Reset */}
-      {gameState.status === 'ended' && gameState.players.some(p => p.id !== '') && (
-        <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(231, 76, 60, 0.9)', color: 'white', padding: '10px 20px', borderRadius: '30px', zIndex: 2000, fontSize: '0.9rem', fontWeight: 'bold', border: '2px solid white' }}>
-          ⚠️ Bàn sẽ Reset sau {idleTimeLeft}s nếu không bắt đầu ván mới!
+    <main className="casino-container">
+      {/* 1. Header & Balance */}
+      <div className="casino-header">
+        <h1 className="casino-title">XÌ DÁCH CASINO</h1>
+        <div className="global-balance">
+          💰 ${profile?.balance?.toLocaleString() || '0'}
         </div>
-      )}
+        {profile && (
+          <div className="user-info">
+            <span className="user-name">{profile.username}</span>
+            <button className="btn-logout" onClick={() => supabase.auth.signOut()}>Đăng xuất</button>
+          </div>
+        )}
+      </div>
 
-      {/* Lịch sử giao dịch */}
-      <div className="transaction-sidebar" style={{ position: 'fixed', left: '20px', top: '100px', width: '250px', background: 'rgba(0,0,0,0.85)', borderRadius: '15px', padding: '15px', border: '1px solid var(--gold)', zIndex: 1000, backdropFilter: 'blur(10px)' }}>
-        <h3 style={{ color: 'var(--gold)', marginBottom: '10px', fontSize: '0.8rem', textAlign: 'center', borderBottom: '1px solid var(--gold)', paddingBottom: '5px' }}>📜 GIAO DỊCH GẦN ĐÂY</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
-          {logs.map(log => (
-            <div key={log.id} style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: log.amount > 0 ? '#2ecc71' : '#e74c3c', fontWeight: 'bold' }}>{log.amount > 0 ? '+' : ''}{log.amount.toLocaleString()}</span>
-                <span style={{ opacity: 0.4, fontSize: '0.6rem' }}>{new Date(log.created_at).toLocaleTimeString()}</span>
+      {/* 2. Bàn chơi chính (Oval) */}
+      <div className="casino-table">
+        {/* Thảm xanh trung tâm */}
+        <div className="table-felt">
+          <div className="felt-inner">
+            <div className="table-logo">GAMEO PREMIUM</div>
+            
+            {/* Khu vực Nhà Cái */}
+            <div className="dealer-area">
+              <div className="dealer-info">
+                <span className="dealer-name">{gameState.dealer.name}</span>
+                <span className="dealer-balance">${gameState.dealer.balance.toLocaleString()}</span>
               </div>
-              <div style={{ opacity: 0.8, marginTop: '2px' }}>{log.description}</div>
+              <div className="hand">
+                {gameState.dealer.hand.map((card, i) => {
+                  const isMeChecked = gameState.players.some(p => p.id === profile?.id && p.isChecked);
+                  const isVisible = gameState.dealer.id === profile?.id || gameState.status === 'ended' || isMeChecked;
+                  return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
+                })}
+              </div>
+              {gameState.dealer.id === profile?.id && (
+                <div className="dealer-controls">
+                  {gameState.status === 'playing' && gameState.turnIndex === -1 && (
+                    <button className="btn-action hit" onClick={dealerHit}>Rút bài</button>
+                  )}
+                  {gameState.status !== 'playing' && (
+                    <button className="btn-action reset" onClick={resetTableToEmpty}>Làm mới bàn</button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Thông báo Game Status */}
+            <div className="game-status-msg">
+              {gameState.status === 'betting' && "⌛ ĐANG ĐẶT CƯỢC..."}
+              {gameState.status === 'playing' && (gameState.turnIndex === -1 ? "👑 LƯỢT NHÀ CÁI" : "🎴 LƯỢT NGƯỜI CHƠI")}
+            </div>
+          </div>
+        </div>
+
+        {/* 10 Ghế xung quanh (Vị trí Oval) */}
+        {gameState.players.map((player, idx) => (
+          <div key={idx} className={`player-box seat-${idx} ${player.id === profile?.id ? 'is-me' : ''} ${gameState.turnIndex === idx ? 'active-turn' : ''}`}>
+            {/* Tên & Thời gian */}
+            <div className="player-header">
+              <span className="name">{player.name}</span>
+              {gameState.turnIndex === idx && <span className="timer">{timeLeft}s</span>}
+            </div>
+
+            {/* Bài người chơi */}
+            <div className="hand">
+              {player.hand.length > 0 ? player.hand.map((card, i) => {
+                const isVisible = player.id === profile?.id || player.isChecked || gameState.status === 'ended';
+                return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
+              }) : player.id !== '' && <div className="waiting-text">{gameState.status === 'betting' ? 'Đặt cược...' : 'Chờ ván...'}</div>}
+            </div>
+
+            {/* Điểm & Kết quả */}
+            {player.hand.length > 0 && (player.id === profile?.id || player.isChecked || gameState.status === 'ended') && (
+              <div className="score-pill">
+                {(() => {
+                  const special = checkSpecialHands(player);
+                  if (special) return special.toUpperCase().replace('_', ' ');
+                  const s = calculateScore(player.hand);
+                  return s > 21 ? `QUẮC (${s})` : `${s} ĐIỂM`;
+                })()}
+              </div>
+            )}
+
+            {/* Controls & Bet */}
+            <div className="player-footer">
+              {player.id === '' ? (
+                !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
+                <button className="btn-sit" onClick={() => takeRole('player', idx)}>Ngồi đây</button>
+              ) : (
+                <>
+                  <div className="bet-display">${player.currentBet.toLocaleString()}</div>
+                  {player.id === profile?.id && gameState.status === 'betting' && (
+                    <input type="number" className="bet-input" placeholder="Cược..." onBlur={(e) => placeBet(idx, parseInt(e.target.value))} />
+                  )}
+                  {player.id === profile?.id && gameState.turnIndex === idx && (
+                    <div className="action-row">
+                      <button className="btn-mini hit" onClick={() => hit(idx)}>Rút</button>
+                      <button className="btn-mini stand" onClick={() => stand(idx)}>Dừng</button>
+                    </div>
+                  )}
+                  {gameState.dealer.id === profile?.id && player.hand.length > 0 && !player.isChecked && (
+                    <button className="btn-mini check" onClick={() => checkPlayer(idx)} disabled={calculateScore(gameState.dealer.hand) < 15 || player.status === 'playing'}>XÉT</button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 3. Sidebar & Controls */}
+      <div className="transaction-sidebar">
+        <h3>📜 GIAO DỊCH</h3>
+        <div className="log-list">
+          {logs.map(log => (
+            <div key={log.id} className="log-item">
+              <span className={log.amount > 0 ? 'pos' : 'neg'}>{log.amount > 0 ? '+' : ''}{log.amount.toLocaleString()}</span>
+              <p>{log.description}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="dealer-section">
-        <div className="score-badge">
-          {gameState.dealer.name} - ${gameState.dealer.balance.toLocaleString()} 
-          {gameState.turnIndex === -1 && gameState.status === 'playing' && <span style={{ color: 'var(--gold)', marginLeft: '10px', animation: 'blink 1s infinite' }}>[LƯỢT NHÀ CÁI]</span>}
-        </div>
-        <div className="hand">
-          {gameState.dealer.hand.map((card, i) => {
-            const isMeChecked = gameState.players.some(p => p.id === profile?.id && p.isChecked);
-            const isVisible = gameState.dealer.id === profile?.id || gameState.status === 'ended' || isMeChecked;
-            return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
-          })}
-        </div>
-        {gameState.dealer.hand.length > 0 && (gameState.dealer.id === profile?.id || gameState.status === 'ended' || gameState.players.some(p => p.id === profile?.id && p.isChecked)) && (
-          <div className="score-pill" style={{ background: 'rgba(212,175,55,0.2)', color: 'var(--gold)', padding: '2px 10px', borderRadius: '10px', fontSize: '0.7rem', marginTop: '5px', border: '1px solid var(--gold)', fontWeight: 'bold' }}>
-            {(() => {
-              const special = checkSpecialHands(gameState.dealer);
-              if (special === 'xi_bang') return 'XÌ BÀNG 🔥';
-              if (special === 'xi_dach') return 'XÌ DÁCH 🃏';
-              const s = calculateScore(gameState.dealer.hand);
-              return s > 21 ? `QUẮC (${s})` : `${s} NÚT`;
-            })()}
-          </div>
-        )}
-        {gameState.dealer.id === '' ? (
-          !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
-          <button className="btn btn-gold" onClick={() => takeRole('dealer')}>Làm Cái 👑</button>
-        ) : gameState.dealer.id === profile?.id && (
-          <div className="controls" style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-            {gameState.status === 'playing' && gameState.turnIndex === -1 && <button className="btn-xet" onClick={dealerHit}>Rút bài Cái</button>}
-            <button className="btn-xet" style={{ background: '#e67e22', color: 'white', border: '1px solid #d35400' }} onClick={resetTableToEmpty}>🔄 Làm mới toàn bàn (Kick hết)</button>
-          </div>
-        )}
-      </div>
-
-      <div className="players-grid">
-        {gameState.players.map((player, idx) => (
-          <div key={idx} className={`player-box seat-${idx} ${player.id === profile?.id ? 'active' : ''} ${gameState.turnIndex === idx ? 'highlight-turn' : ''}`}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: player.id ? 'var(--gold)' : '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }}>{player.name}</div>
-              {gameState.turnIndex === idx && <div style={{ color: '#ff4757', fontWeight: 'bold', fontSize: '0.75rem' }}>{timeLeft}s</div>}
-            </div>
-            {player.id !== '' && <div className="balance-tag" style={{ color: '#2ecc71', fontSize: '0.7rem', marginTop: '-2px' }}>${player.balance.toLocaleString()}</div>}
-            <div className="hand">
-              {player.hand.length > 0 ? player.hand.map((card, i) => {
-                const isVisible = player.id === profile?.id || player.isChecked || gameState.status === 'ended';
-                return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
-              }) : player.id !== '' ? <div style={{ fontSize: '0.6rem', opacity: 0.5, textAlign: 'center', width: '100%' }}>{gameState.status === 'betting' ? '⌛ Cược...' : '💤 Chờ ván...'}</div> : null}
-            </div>
-            {player.hand.length > 0 && (player.id === profile?.id || player.isChecked || gameState.status === 'ended') && (
-              <div className="score-pill" style={{ background: 'rgba(255,255,255,0.1)', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '0.65rem', marginTop: '5px', border: '1px solid rgba(255,255,255,0.2)' }}>
-                {(() => {
-                  const special = checkSpecialHands(player);
-                  if (special === 'xi_bang') return 'XÌ BÀNG 🔥';
-                  if (special === 'xi_dach') return 'XÌ DÁCH 🃏';
-                  if (special === 'ngu_linh') return 'NGŨ LINH ✨';
-                  const s = calculateScore(player.hand);
-                  return s > 21 ? `QUẮC (${s})` : `${s} NÚT`;
-                })()}
-              </div>
-            )}
-            {player.id === '' ? (
-              !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
-              (gameState.status !== 'playing' ? <button className="btn-xet" onClick={() => takeRole('player', idx)}>Ngồi đây</button> : <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Trong ván...</div>)
-            ) : (
-              <>
-                {player.currentBet > 0 && <div style={{ fontSize: '0.75rem', color: 'var(--gold)', fontWeight: 'bold' }}>💸 Cược: ${player.currentBet.toLocaleString()}</div>}
-                {player.gameResult && <div className={`status-tag status-${player.gameResult}`} style={{ marginTop: '5px' }}>{player.gameResult}</div>}
-                {player.id === profile?.id && (
-                  <div style={{ marginTop: '5px' }}>
-                    {gameState.status === 'betting' ? (
-                      <input type="number" className="bet-input" placeholder="Nhập cược" onBlur={(e) => placeBet(idx, parseInt(e.target.value))} />
-                    ) : gameState.turnIndex === idx ? (
-                      <div style={{ display: 'flex', gap: '5px' }}>
-                        <button className="btn-xet" style={{ background: '#2ecc71' }} onClick={() => hit(idx)}>Rút</button>
-                        <button className="btn-xet" style={{ background: '#f1c40f' }} onClick={() => stand(idx)}>Dừng</button>
-                      </div>
-                    ) : player.hand.length > 0 && <div style={{ fontSize: '0.65rem', color: '#aaa', marginTop: '5px' }}>{player.status === 'stay' ? '✅ Đã dừng' : '⏳ Chờ lượt...'}</div>}
-                  </div>
-                )}
-                {gameState.dealer.id === profile?.id && player.hand.length > 0 && !player.isChecked && (
-                  <button className="btn-xet" style={{ marginTop: '5px', background: (calculateScore(gameState.dealer.hand) >= 15 && player.status !== 'playing') ? '#ff4757' : '#555' }} onClick={() => checkPlayer(idx)} disabled={calculateScore(gameState.dealer.hand) < 15 || player.status === 'playing'}>XÉT</button>
-                )}
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="controls">
+      <div className="bottom-controls">
         {gameState.dealer.id === profile?.id && (
-          <button className="btn btn-gold" onClick={startNewGame}>
-            {gameState.status === 'ended' ? 'Mở bàn đặt cược' : gameState.status === 'betting' ? 'Chia bài' : 'Bắt đầu mới'}
+          <button className="btn-main" onClick={startNewGame}>
+            {gameState.status === 'ended' ? 'BẮT ĐẦU VÁN MỚI' : gameState.status === 'betting' ? 'CHIA BÀI' : 'RESET VÁN'}
           </button>
         )}
-        {profile && <button className="btn-xet" style={{ marginLeft: '10px', background: 'rgba(255,255,255,0.1)', color: '#aaa' }} onClick={leaveRole}>Rời chỗ</button>}
+        {profile && <button className="btn-leave" onClick={leaveRole}>Rời bàn</button>}
       </div>
+
+      {/* Thông báo Timeout */}
+      {gameState.status === 'ended' && gameState.players.some(p => p.id !== '') && (
+        <div className="idle-timer">⚠️ Bàn tự động đóng sau {idleTimeLeft}s</div>
+      )}
     </main>
   );
 }
