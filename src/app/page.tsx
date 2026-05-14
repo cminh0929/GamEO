@@ -377,8 +377,15 @@ export default function GameDashboard() {
             {/* Khu vực Nhà Cái */}
             <div className="dealer-area">
               <div className="dealer-info">
-                <span className="dealer-name">{gameState.dealer.name}</span>
-                <span className="dealer-balance">${gameState.dealer.balance.toLocaleString()}</span>
+                <span className={gameState.dealer.id ? "dealer-name" : "dealer-name empty"}>
+                  {gameState.dealer.id ? gameState.dealer.name : "ĐANG TRỐNG"}
+                </span>
+                {gameState.dealer.id ? (
+                  <span className="dealer-balance">${gameState.dealer.balance.toLocaleString()}</span>
+                ) : (
+                  !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
+                  <button className="btn-sit dealer" onClick={() => takeRole('dealer')}>LÀM NHÀ CÁI 👑</button>
+                )}
               </div>
               <div className="hand">
                 {gameState.dealer.hand.map((card, i) => {

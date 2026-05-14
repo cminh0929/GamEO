@@ -203,6 +203,20 @@ body {
 
 .btn-sit:hover { background: #b8860b; }
 
+.btn-sit.dealer {
+  padding: 10px 20px;
+  font-size: 1rem;
+  background: linear-gradient(135deg, var(--gold) 0%, #b8860b 100%);
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 4px 15px rgba(212,175,55,0.3);
+}
+
+.dealer-name.empty {
+  opacity: 0.5;
+  font-size: 0.8rem;
+  margin-bottom: 5px;
+}
+
 /* Sidebar */
 .transaction-sidebar {
   position: fixed;
