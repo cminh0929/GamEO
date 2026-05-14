@@ -272,7 +272,7 @@ export default function GameDashboard() {
     const isMaxCards = newHand.length === 5;
     
     if (isPenalty) {
-      const otherPlayers = gameState.players.filter(p => p.id !== '' && p.id !== profile.id);
+      const otherPlayers = gameState.players.filter(p => p.id !== '' && p.id !== profile?.id);
       const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + player.currentBet;
       executeTransaction(player.id, -totalTableBet, 'penalty', `ĐỀN NGUYÊN BÀN (Quắc ${newScore}đ)`);
       if (gameState.dealer.id) executeTransaction(gameState.dealer.id, totalTableBet, 'win', `Nhà Cái thu tiền đền nguyên bàn từ ${player.name}`);
@@ -286,11 +286,12 @@ export default function GameDashboard() {
     
     let nextState = { ...gameState, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
     
-    // Chỉ tự động chuyển lượt nếu: Bị Phạt Đền (>=28) hoặc Đã đủ 5 lá (Ngũ Linh hoặc Quắc 5 lá)
+    // Chỉ tự động chuyển lượt nếu: Bị Phạt Đền (>=28) hoặc Đã đủ 5 lá
+    let finalState = nextState;
     if (isPenalty || isMaxCards) {
-      nextState = getNextTurnState(nextState);
+      finalState = getNextTurnState(nextState);
     }
-    updateRemoteState(nextState);
+    updateRemoteState(finalState);
   };
 
   const stand = (idx: number) => {
