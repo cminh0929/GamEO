@@ -14,7 +14,6 @@ export const dynamic = 'force-dynamic';
 export default function GameDashboard() {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [isBigSpinning, setIsBigSpinning] = useState(false);
   
   const [gameState, setGameState] = useState<GameState>({
     deck: [],
@@ -56,19 +55,31 @@ export default function GameDashboard() {
   };
 
   useEffect(() => {
+    let active = true;
+
     const fetchGame = async () => {
       const { data } = await supabase.from('game_rooms').select('game_state').eq('id', ROOM_ID).single();
-      if (data) setGameState(data.game_state);
-      else await supabase.from('game_rooms').insert([{ id: ROOM_ID, game_state: gameState }]);
+      if (active) {
+        if (data) setGameState(data.game_state);
+        else await supabase.from('game_rooms').insert([{ id: ROOM_ID, game_state: gameState }]);
+      }
     };
     fetchGame();
 
     const channel = supabase.channel('room-1').on('postgres_changes', 
       { event: 'UPDATE', schema: 'public', table: 'game_rooms', filter: `id=eq.${ROOM_ID}` },
-      (payload) => setGameState(payload.new.game_state)
-    ).subscribe();
+      (payload) => {
+        console.log('Realtime Update Received:', payload.new.game_state);
+        setGameState(payload.new.game_state);
+      }
+    ).subscribe((status) => {
+      console.log('Realtime Channel Status:', status);
+    });
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { 
+      active = false;
+      supabase.removeChannel(channel); 
+    };
   }, []);
 
   const updateRemoteState = async (newState: GameState) => {
