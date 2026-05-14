@@ -50,7 +50,6 @@ export default function GameDashboard() {
     if (data) setProfile(data);
   };
 
-  // 1. Đồng bộ Realtime và Xử lý Đếm ngược
   useEffect(() => {
     let active = true;
     const fetchGame = async () => {
@@ -67,7 +66,6 @@ export default function GameDashboard() {
     return () => { active = false; supabase.removeChannel(channel); };
   }, []);
 
-  // 2. Logic Timer (Client-side)
   useEffect(() => {
     if (gameState.status !== 'playing' || !gameState.turnDeadline) {
       setTimeLeft(0);
@@ -79,7 +77,6 @@ export default function GameDashboard() {
       const diff = Math.max(0, Math.floor((gameState.turnDeadline! - now) / 1000));
       setTimeLeft(diff);
 
-      // Nếu hết giờ và là lượt của mình, tự động Stand
       const myPlayerIndex = gameState.players.findIndex(p => p.id === profile?.id);
       if (diff === 0 && gameState.turnIndex === myPlayerIndex) {
         stand(gameState.turnIndex);
@@ -99,7 +96,6 @@ export default function GameDashboard() {
     let nextIdx = currentState.turnIndex + 1;
     while (nextIdx < currentState.players.length && currentState.players[nextIdx].id === '') nextIdx++;
     
-    // Nếu đã hết lượt người chơi, chuyển sang lượt Nhà Cái
     if (nextIdx >= currentState.players.length) {
       return { ...currentState, turnIndex: -1, turnDeadline: 0 };
     }
@@ -124,18 +120,50 @@ export default function GameDashboard() {
     updateRemoteState(newState);
   };
 
-  const leaveRole = () => {
+  const leaveRole = async () => {
     if (!profile) return;
     const newState = { ...gameState };
+    const isGameActive = gameState.status === 'playing';
+
     if (newState.dealer.id === profile.id) {
+      // TRƯỜNG HỢP: Nhà cái thoát bàn
+      if (isGameActive) {
+        alert("Nhà cái thoát ván bài! Ván đấu bị hủy bỏ.");
+        // Hủy ván bài, không ai mất tiền, reset trạng thái
+        newState.status = 'ended';
+        newState.players.forEach(p => { p.hand = []; p.currentBet = 0; p.gameResult = null; p.isChecked = false; });
+      }
       newState.dealer.id = '';
       newState.dealer.name = 'Nhà Cái';
-    }
-    newState.players.forEach((p, i) => {
-      if (p.id === profile.id) {
-        p.id = ''; p.name = `Vị trí ${i + 1}`; p.hand = []; p.score = 0; p.balance = 0;
+    } else {
+      // TRƯỜNG HỢP: Người chơi thoát bàn
+      const pIdx = newState.players.findIndex(p => p.id === profile.id);
+      if (pIdx !== -1) {
+        const player = newState.players[pIdx];
+        if (isGameActive && player.hand.length > 0 && !player.isChecked) {
+          // Xử phạt: Nhà cái hưởng số tiền cược của người chơi này
+          const bet = player.currentBet;
+          const newPlayerBalance = player.balance - bet;
+          const newDealerBalance = newState.dealer.balance + bet;
+
+          // Cập nhật DB
+          await supabase.from('profiles').update({ balance: newPlayerBalance }).eq('id', player.id);
+          if (newState.dealer.id) {
+            await supabase.from('profiles').update({ balance: newDealerBalance }).eq('id', newState.dealer.id);
+          }
+
+          newState.dealer.balance = newDealerBalance;
+          alert(`Bạn đã thoát ván bài! Nhà cái hưởng tiền cược: $${bet.toLocaleString()}`);
+        }
+        
+        newState.players[pIdx].id = '';
+        newState.players[pIdx].name = `Vị trí ${pIdx + 1}`;
+        newState.players[pIdx].hand = [];
+        newState.players[pIdx].score = 0;
+        newState.players[pIdx].balance = 0;
+        newState.players[pIdx].currentBet = 0;
       }
-    });
+    }
     updateRemoteState(newState);
   };
 
@@ -206,8 +234,6 @@ export default function GameDashboard() {
   const checkPlayer = async (idx: number) => {
     if (gameState.dealer.id !== profile.id) return;
     const dealerScore = calculateScore(gameState.dealer.hand);
-    
-    // Kiểm tra quy tắc: Cái đủ 15 mới được xét đột xuất
     if (dealerScore < 15) return alert("Nhà Cái phải đủ ít nhất 15 điểm mới được quyền XÉT!");
 
     const updatedPlayers = [...gameState.players];
@@ -272,7 +298,7 @@ export default function GameDashboard() {
         <div className="dealer-section">
           <div className="score-badge">
             {gameState.dealer.name} - ${gameState.dealer.balance.toLocaleString()} 
-            {gameState.turnIndex === -1 && <span style={{ color: 'var(--gold)', marginLeft: '10px' }}>[LƯỢT NHÀ CÁI]</span>}
+            {gameState.turnIndex === -1 && gameState.status === 'playing' && <span style={{ color: 'var(--gold)', marginLeft: '10px' }}>[LƯỢT NHÀ CÁI]</span>}
           </div>
           <div className="hand">
             {gameState.dealer.hand.map((card, i) => {
@@ -285,7 +311,7 @@ export default function GameDashboard() {
             <button className="btn-xet" onClick={() => takeRole('dealer')}>Làm Cái 👑</button>
           ) : gameState.dealer.id === profile?.id && (
             <div className="controls" style={{ marginTop: '10px' }}>
-              <button className="btn-xet" onClick={dealerHit}>Rút bài Cái</button>
+              {gameState.status === 'playing' && gameState.turnIndex === -1 && <button className="btn-xet" onClick={dealerHit}>Rút bài Cái</button>}
               <button className="btn-xet" style={{ marginLeft: '10px' }} onClick={() => updateRemoteState({...gameState, status: 'ended'})}>Kết thúc ván</button>
             </div>
           )}
