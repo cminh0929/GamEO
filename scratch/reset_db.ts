@@ -28,8 +28,7 @@ async function resetDatabase() {
 
   const { error } = await supabase
     .from('game_rooms')
-    .update({ game_state: emptyState })
-    .eq('id', ROOM_ID);
+    .upsert({ id: ROOM_ID, game_state: emptyState });
 
   if (error) {
     console.error('❌ Lỗi:', error.message);

@@ -41,6 +41,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Auth state listener
   useEffect(() => {
+    // Bắt buộc đăng nhập lại mỗi lần F5 / load lại trang để tránh lỗi state
+    supabase.auth.signOut().then(() => {
+      setSession(null);
+      setProfile(null);
+      setLoading(false);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       if (newSession) {
@@ -51,18 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (s) {
-        loadProfile(s.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
     return () => subscription.unsubscribe();
-   
   }, []);
 
   // Real-time profile sync (balance, avatar)
