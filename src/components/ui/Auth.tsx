@@ -42,7 +42,11 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
       
       if (error) {
         console.error("SignUp Error:", error);
-        alert(`Lỗi đăng ký: ${error.message} (Mẹo: Kiểm tra xem đã tắt 'Confirm Email' trong Supabase chưa)`);
+        if (error.message.includes('User already registered')) {
+          alert('❌ Tên đăng nhập này đã có người sử dụng. Vui lòng chọn tên khác!');
+        } else {
+          alert(`❌ Lỗi đăng ký: ${error.message}`);
+        }
       } else {
         if (data.session) onSession(data.session);
         else {
@@ -52,7 +56,7 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
           });
           if (signInError) {
             console.error("SignIn After SignUp Error:", signInError);
-            alert('Đăng ký xong nhưng không thể tự động đăng nhập. Vui lòng kiểm tra cấu hình Authentication.');
+            alert('❌ Đăng ký xong nhưng không thể tự động đăng nhập. Vui lòng kiểm tra lại cấu hình.');
           }
           else onSession(signInData.session);
         }
@@ -64,7 +68,11 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
       });
       if (error) {
         console.error("SignIn Error:", error);
-        alert(`Lỗi đăng nhập: ${error.message}`);
+        if (error.message.includes('Invalid login credentials')) {
+          alert('❌ Tên đăng nhập hoặc mật khẩu không đúng!');
+        } else {
+          alert(`❌ Lỗi đăng nhập: ${error.message}`);
+        }
       }
       else onSession(data.session);
     }

@@ -8,7 +8,7 @@ export class GameRoomService {
       .from('game_rooms')
       .select('game_state')
       .eq('id', roomId)
-      .single();
+      .maybeSingle();
     return data?.game_state || null;
   }
 

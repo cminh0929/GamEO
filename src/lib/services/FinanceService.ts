@@ -33,7 +33,7 @@ export class FinanceService {
           .from('profiles')
           .select('balance')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
 
         if (fetchError || !currentProfile) throw new Error('Profile not found');
 
@@ -59,7 +59,7 @@ export class FinanceService {
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     if (error) return null;
     return data;
   }
