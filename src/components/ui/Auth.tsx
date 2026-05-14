@@ -9,10 +9,26 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+
+  const passwordStrength = password.length === 0 ? 'none'
+    : password.length < 6 ? 'weak'
+    : password.length < 10 ? 'medium'
+    : 'strong';
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSignUp && password !== confirmPassword) {
+      alert('❌ Mật khẩu không khớp! Vui lòng nhập lại.');
+      return;
+    }
+    if (isSignUp && password.length < 6) {
+      alert('❌ Mật khẩu quá ngắn! Cần tối thiểu 6 ký tự.');
+      return;
+    }
+
     setLoading(true);
     
     const internalEmail = `${username.trim().toLowerCase()}@gameo.internal`;
@@ -91,6 +107,38 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
               required 
             />
           </div>
+
+          {/* Password strength bar — only visible when typing during sign up */}
+          {isSignUp && passwordStrength !== 'none' && (
+            <div className="password-strength">
+              <div className={`strength-bar strength-${passwordStrength}`} />
+              <span className={`strength-label strength-label-${passwordStrength}`}>
+                {passwordStrength === 'weak' && '🔴 Quá ngắn (< 6 ký tự)'}
+                {passwordStrength === 'medium' && '🟡 Tạm ổn'}
+                {passwordStrength === 'strong' && '🟢 Mạnh'}
+              </span>
+            </div>
+          )}
+
+          {/* Confirm password — only in sign-up mode */}
+          {isSignUp && (
+            <div className="input-group">
+              <span className="input-icon">🔑</span>
+              <input 
+                className="auth-input"
+                type="password"
+                placeholder="Nhập lại mật khẩu"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          {/* Mismatch indicator */}
+          {isSignUp && confirmPassword.length > 0 && password !== confirmPassword && (
+            <p className="confirm-mismatch">❌ Mật khẩu không khớp</p>
+          )}
 
           <button className="btn-auth-submit" type="submit" disabled={loading}>
             {loading ? (
@@ -233,6 +281,40 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
 
         .btn-auth-submit:active {
           transform: translateY(0);
+        }
+
+        .password-strength {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: -10px;
+        }
+
+        .strength-bar {
+          height: 4px;
+          border-radius: 2px;
+          flex: 1;
+          transition: all 0.3s;
+        }
+
+        .strength-weak   { background: #ff4444; width: 33%; }
+        .strength-medium { background: #ffaa00; width: 66%; }
+        .strength-strong { background: #00cc66; width: 100%; }
+
+        .strength-label {
+          font-size: 0.75rem;
+          white-space: nowrap;
+        }
+
+        .strength-label-weak   { color: #ff4444; }
+        .strength-label-medium { color: #ffaa00; }
+        .strength-label-strong { color: #00cc66; }
+
+        .confirm-mismatch {
+          color: #ff4444;
+          font-size: 0.8rem;
+          margin: -12px 0 0;
+          padding-left: 4px;
         }
 
         .auth-footer {

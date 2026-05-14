@@ -1,25 +1,95 @@
 'use client';
 
-import React from 'react';
-import type { Metadata } from 'next';
+import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTransactions } from '../../../hooks/useTransactions';
 import { useXiDachRoom } from '../../../hooks/useXiDachRoom';
 import { useGameTimer } from '../../../hooks/useGameTimer';
+import { useTabGuard } from '../../../hooks/useTabGuard';
+import { AuthGuard } from '../../../components/platform/AuthGuard';
 import { DealerArea } from '../../../components/xi-dach/DealerArea';
 import { PlayerSeat } from '../../../components/xi-dach/PlayerSeat';
 
 export const dynamic = 'force-dynamic';
 
-export default function XiDachPage() {
+const ROOM_ID = 'gameo-table-1';
+
+// ─── Blocked Tab Screen ───────────────────────────────────────────────────────
+function BlockedTabScreen() {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      background: '#050505', gap: '1rem',
+      fontFamily: 'Inter, sans-serif',
+    }}>
+      <div style={{ fontSize: '3rem' }}>⚠️</div>
+      <h2 style={{ color: '#d4af37', fontSize: '1.5rem', fontWeight: 900, margin: 0 }}>
+        GAMEO đang mở ở tab khác
+      </h2>
+      <p style={{ color: 'rgba(255,255,255,0.6)', margin: 0, textAlign: 'center', maxWidth: 360 }}>
+        Bạn đang chơi ở một cửa sổ/tab khác. Vui lòng đóng tab này để tránh xung đột dữ liệu.
+      </p>
+      <button
+        onClick={() => window.close()}
+        style={{
+          marginTop: '1rem',
+          padding: '12px 28px',
+          background: 'linear-gradient(135deg, #d4af37, #b8860b)',
+          color: '#000', border: 'none', borderRadius: 12,
+          fontWeight: 800, fontSize: '1rem', cursor: 'pointer',
+        }}
+      >
+        Đóng tab này
+      </button>
+    </div>
+  );
+}
+
+// ─── Main Game Page ───────────────────────────────────────────────────────────
+function XiDachGame() {
   const { session, profile } = useAuth();
   const { logs, executeTransaction } = useTransactions(session?.user.id);
   const { gameState, actions } = useXiDachRoom(profile, executeTransaction);
+  const { isBlocked } = useTabGuard(session?.user.id ?? null, ROOM_ID);
   const { timeLeft, idleTimeLeft } = useGameTimer({
     gameState,
     profile,
     stand: actions.stand,
+    isBlocked,
   });
+
+  // ── beforeunload: auto-leave when closing tab mid-game ──────────────────
+  const actionsRef = useRef(actions);
+  const profileRef = useRef(profile);
+  const gameStateRef = useRef(gameState);
+  useEffect(() => { actionsRef.current = actions; }, [actions]);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const gs = gameStateRef.current;
+      const p = profileRef.current;
+      if (!p) return;
+
+      const isSeated =
+        gs.dealer.id === p.id ||
+        gs.players.some((pl) => pl.id === p.id);
+
+      // Fire-and-forget leave — can't await in beforeunload
+      if (isSeated) {
+        actionsRef.current.leaveRole();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
+  // ── Blocked tab overlay ──────────────────────────────────────────────────
+  if (isBlocked) return <BlockedTabScreen />;
 
   return (
     <main className="casino-container">
@@ -107,5 +177,14 @@ export default function XiDachPage() {
         </div>
       )}
     </main>
+  );
+}
+
+// ─── Exported Page — wrapped with AuthGuard ───────────────────────────────────
+export default function XiDachPage() {
+  return (
+    <AuthGuard>
+      <XiDachGame />
+    </AuthGuard>
   );
 }

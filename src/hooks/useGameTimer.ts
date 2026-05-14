@@ -8,9 +8,11 @@ interface UseGameTimerOptions {
   gameState: GameState;
   profile: Profile | null;
   stand: (idx: number) => void;
+  /** When true (tab is blocked by TabGuard), suppress all timer-triggered actions */
+  isBlocked?: boolean;
 }
 
-export function useGameTimer({ gameState, profile, stand }: UseGameTimerOptions) {
+export function useGameTimer({ gameState, profile, stand, isBlocked = false }: UseGameTimerOptions) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [idleTimeLeft, setIdleTimeLeft] = useState(60);
 
@@ -22,7 +24,8 @@ export function useGameTimer({ gameState, profile, stand }: UseGameTimerOptions)
         const diff = Math.max(0, Math.floor((gameState.turnDeadline - now) / 1000));
         setTimeLeft(diff);
         const myPlayerIndex = gameState.players.findIndex((p) => p.id === profile?.id);
-        if (diff === 0 && gameState.turnIndex === myPlayerIndex) {
+        // Guard: don't auto-stand if this tab is blocked (duplicate tab scenario)
+        if (diff === 0 && gameState.turnIndex === myPlayerIndex && !isBlocked) {
           stand(gameState.turnIndex);
         }
       } else {
@@ -30,7 +33,7 @@ export function useGameTimer({ gameState, profile, stand }: UseGameTimerOptions)
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [gameState.status, gameState.turnDeadline, gameState.turnIndex, gameState.players, profile?.id, stand]);
+  }, [gameState.status, gameState.turnDeadline, gameState.turnIndex, gameState.players, profile?.id, stand, isBlocked]);
 
   // Idle timer (auto-reset if dealer is away)
   useEffect(() => {

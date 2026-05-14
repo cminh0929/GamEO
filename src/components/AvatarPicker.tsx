@@ -51,9 +51,9 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({ currentAvatar, userI
       }
 
       onUpdate(publicUrl);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Full process error:', error);
-      alert('Lỗi tải ảnh: ' + (error.message || 'Không xác định'));
+      alert('Lỗi tải ảnh: ' + (error instanceof Error ? error.message : 'Không xác định'));
     } finally {
       setUploading(false);
     }

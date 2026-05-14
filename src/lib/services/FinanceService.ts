@@ -20,25 +20,35 @@ export class FinanceService {
   ): Promise<void> {
     if (!userId) return;
     try {
-      const { data: currentProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('balance')
-        .eq('id', userId)
-        .single();
+      // Atomic RPC: avoids SELECT→UPDATE race condition when concurrent transactions occur
+      const { error: rpcError } = await supabase.rpc('update_balance', {
+        p_user_id: userId,
+        p_amount: amount,
+      });
 
-      if (fetchError || !currentProfile) throw new Error('Profile not found');
+      if (rpcError) {
+        // Fallback: RPC not yet deployed — use non-atomic path
+        console.warn('update_balance RPC unavailable, falling back:', rpcError.message);
+        const { data: currentProfile, error: fetchError } = await supabase
+          .from('profiles')
+          .select('balance')
+          .eq('id', userId)
+          .single();
 
-      const newBalance = (currentProfile.balance || 0) + amount;
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ balance: newBalance })
-        .eq('id', userId);
+        if (fetchError || !currentProfile) throw new Error('Profile not found');
 
-      if (!updateError) {
-        await supabase
-          .from('transaction_logs')
-          .insert({ user_id: userId, amount, type, description });
+        const newBalance = (currentProfile.balance || 0) + amount;
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ balance: newBalance })
+          .eq('id', userId);
+
+        if (updateError) throw updateError;
       }
+
+      await supabase
+        .from('transaction_logs')
+        .insert({ user_id: userId, amount, type, description });
     } catch (err) {
       console.error('Transaction Error:', err);
     }
