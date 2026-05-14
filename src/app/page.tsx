@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { GameCard } from '../components/platform/GameCard';
+import { TCChat } from '../components/platform/TCChat';
 import { GAME_MENU } from '../lib/constants';
 
 export default function LobbyPage() {
@@ -23,6 +24,9 @@ export default function LobbyPage() {
           ))}
         </div>
       </section>
+
+      {/* TCChat — kênh chat nội bộ */}
+      <TCChat />
 
       {/* Footer note */}
       <footer className="lobby-footer">
