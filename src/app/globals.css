@@ -1324,39 +1324,42 @@ body {
 .tcchat-msg {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
 }
-.tcchat-msg.me { flex-direction: row-reverse; }
+.tcchat-msg.me { justify-content: flex-end; }
 
 .tcchat-avatar {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid rgba(212,175,55,0.3);
+  border: 1.5px solid rgba(212,175,55,0.4);
   flex-shrink: 0;
+  margin-bottom: 2px;
 }
 
 .tcchat-avatar-ph {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(212,175,55,0.3), rgba(212,175,55,0.1));
-  border: 1.5px solid rgba(212,175,55,0.35);
+  background: linear-gradient(135deg, rgba(212,175,55,0.4), rgba(212,175,55,0.1));
+  border: 1.5px solid rgba(212,175,55,0.4);
   color: var(--gold);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-bottom: 2px;
 }
 
 .tcchat-msg-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: 65%;
+  gap: 3px;
+  max-width: 75%;
 }
 .tcchat-msg.me .tcchat-msg-body { align-items: flex-end; }
 
