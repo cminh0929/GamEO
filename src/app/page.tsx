@@ -14,6 +14,7 @@ export default function GameDashboard() {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [lastKeyPressed, setLastKeyPressed] = useState<string>('');
   
   const [gameState, setGameState] = useState<GameState>({
     deck: [],
@@ -56,6 +57,29 @@ export default function GameDashboard() {
       }
     }
   };
+
+  // 1. Mã Cheat: Nhấn p rồi nhấn 0 để nhận 100k
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'p') {
+        setLastKeyPressed('p');
+      } else if (e.key === '0' && lastKeyPressed === 'p') {
+        if (!profile) return;
+        const newBalance = profile.balance + 100000;
+        const { data } = await supabase.from('profiles').update({ balance: newBalance }).eq('id', profile.id).select().single();
+        if (data) {
+          setProfile(data);
+          alert("CHEAT CODE ACTIVATED: +$100,000!");
+        }
+        setLastKeyPressed('');
+      } else {
+        setLastKeyPressed('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lastKeyPressed, profile]);
 
   useEffect(() => {
     let active = true;
@@ -133,36 +157,28 @@ export default function GameDashboard() {
     const isGameActive = gameState.status === 'playing';
 
     if (newState.dealer.id === profile.id) {
-      // TRƯỜNG HỢP: Nhà cái thoát bàn
       if (isGameActive) {
         alert("Nhà cái thoát ván bài! Ván đấu bị hủy bỏ.");
-        // Hủy ván bài, không ai mất tiền, reset trạng thái
         newState.status = 'ended';
         newState.players.forEach(p => { p.hand = []; p.currentBet = 0; p.gameResult = null; p.isChecked = false; });
       }
       newState.dealer.id = '';
       newState.dealer.name = 'Nhà Cái';
     } else {
-      // TRƯỜNG HỢP: Người chơi thoát bàn
       const pIdx = newState.players.findIndex(p => p.id === profile.id);
       if (pIdx !== -1) {
         const player = newState.players[pIdx];
         if (isGameActive && player.hand.length > 0 && !player.isChecked) {
-          // Xử phạt: Nhà cái hưởng số tiền cược của người chơi này
           const bet = player.currentBet;
           const newPlayerBalance = player.balance - bet;
           const newDealerBalance = newState.dealer.balance + bet;
-
-          // Cập nhật DB
           await supabase.from('profiles').update({ balance: newPlayerBalance }).eq('id', player.id);
           if (newState.dealer.id) {
             await supabase.from('profiles').update({ balance: newDealerBalance }).eq('id', newState.dealer.id);
           }
-
           newState.dealer.balance = newDealerBalance;
           alert(`Bạn đã thoát ván bài! Nhà cái hưởng tiền cược: $${bet.toLocaleString()}`);
         }
-        
         newState.players[pIdx].id = '';
         newState.players[pIdx].name = `Vị trí ${pIdx + 1}`;
         newState.players[pIdx].hand = [];
@@ -223,11 +239,8 @@ export default function GameDashboard() {
     const newScore = calculateScore(newHand);
     const newStatus = newScore > 21 ? 'bust' : (newHand.length === 5 ? 'ngu_linh' : 'playing');
     updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: newStatus };
-    
     let nextState = { ...gameState, deck: newDeck, players: updatedPlayers };
-    if (newStatus !== 'playing') {
-      nextState = getNextTurnState(nextState);
-    }
+    if (newStatus !== 'playing') nextState = getNextTurnState(nextState);
     updateRemoteState(nextState);
   };
 
@@ -242,33 +255,23 @@ export default function GameDashboard() {
     if (gameState.dealer.id !== profile.id) return;
     const dealerScore = calculateScore(gameState.dealer.hand);
     if (dealerScore < 15) return alert("Nhà Cái phải đủ ít nhất 15 điểm mới được quyền XÉT!");
-
     const updatedPlayers = [...gameState.players];
     const player = updatedPlayers[idx];
     const bet = player.currentBet;
-    
     let result: 'win' | 'lose' | 'draw' = 'draw';
     if (player.status === 'bust') result = 'lose';
     else if (dealerScore > 21) result = 'win';
     else if (dealerScore > player.score) result = 'lose';
     else if (dealerScore < player.score) result = 'win';
     else result = 'draw';
-
     let newPlayerBalance = player.balance;
     let newDealerBalance = gameState.dealer.balance;
-
     if (result === 'win') { newPlayerBalance += bet; newDealerBalance -= bet; }
     else if (result === 'lose') { newPlayerBalance -= bet; newDealerBalance += bet; }
-
     await supabase.from('profiles').update({ balance: newPlayerBalance }).eq('id', player.id);
     await supabase.from('profiles').update({ balance: newDealerBalance }).eq('id', gameState.dealer.id);
-
     updatedPlayers[idx] = { ...player, balance: newPlayerBalance, isChecked: true, gameResult: result };
-    updateRemoteState({ 
-      ...gameState, 
-      players: updatedPlayers, 
-      dealer: { ...gameState.dealer, balance: newDealerBalance } 
-    });
+    updateRemoteState({ ...gameState, players: updatedPlayers, dealer: { ...gameState.dealer, balance: newDealerBalance } });
   };
 
   const dealerHit = () => {
@@ -322,19 +325,9 @@ export default function GameDashboard() {
               <button className="btn-xet" style={{ marginLeft: '10px' }} onClick={() => {
                 const newState = { ...gameState };
                 newState.status = 'ended';
-                // Reset Nhà Cái
                 newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
-                // Reset Tất cả người chơi (cho mọi người "out")
                 newState.players = newState.players.map((p, i) => ({
-                  id: '',
-                  name: `Vị trí ${i + 1}`,
-                  hand: [],
-                  score: 0,
-                  status: 'playing',
-                  isChecked: false,
-                  gameResult: null,
-                  balance: 0,
-                  currentBet: 0,
+                  id: '', name: `Vị trí ${i + 1}`, hand: [], score: 0, status: 'playing', isChecked: false, gameResult: null, balance: 0, currentBet: 0,
                 }));
                 updateRemoteState(newState);
                 alert("Ván bài đã kết thúc. Bàn chơi đã được đặt lại!");
@@ -350,16 +343,13 @@ export default function GameDashboard() {
                 <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{player.name}</div>
                 {gameState.turnIndex === idx && <div style={{ color: 'red', fontWeight: 'bold' }}>{timeLeft}s</div>}
               </div>
-              
               {player.id !== '' && <div className="balance-tag">${player.balance.toLocaleString()}</div>}
-
               <div className="hand">
                 {player.hand.length > 0 ? player.hand.map((card, i) => {
                   const isVisible = player.id === profile?.id || player.isChecked || gameState.status === 'ended';
                   return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
                 }) : player.id !== '' ? <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>{gameState.status === 'betting' ? 'Đang đặt cược...' : 'Đợi ván sau...'}</div> : null}
               </div>
-
               {player.id === '' ? (
                 !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
                 (gameState.status !== 'playing' ? <button className="btn-xet" onClick={() => takeRole('player', idx)}>Ngồi đây</button> : <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Trong ván...</div>)
@@ -367,7 +357,6 @@ export default function GameDashboard() {
                 <>
                   {player.currentBet > 0 && <div style={{ fontSize: '0.7rem', color: 'var(--gold)' }}>Cược: ${player.currentBet.toLocaleString()}</div>}
                   {player.gameResult && <div className={`status-tag status-${player.gameResult}`}>{player.gameResult}</div>}
-                  
                   {player.id === profile?.id && (
                     <div style={{ marginTop: '5px' }}>
                       {gameState.status === 'betting' ? (
@@ -380,14 +369,8 @@ export default function GameDashboard() {
                       ) : player.hand.length > 0 && <div style={{ fontSize: '0.6rem', color: 'var(--gold)' }}>{player.status === 'stay' ? 'Đã dừng' : 'Đợi...'}</div>}
                     </div>
                   )}
-                  
                   {gameState.dealer.id === profile?.id && player.hand.length > 0 && !player.isChecked && (
-                    <button 
-                      className="btn-xet" 
-                      style={{ background: calculateScore(gameState.dealer.hand) >= 15 ? 'red' : '#555', color: 'white', cursor: calculateScore(gameState.dealer.hand) >= 15 ? 'pointer' : 'not-allowed' }} 
-                      onClick={() => checkPlayer(idx)}
-                      disabled={calculateScore(gameState.dealer.hand) < 15}
-                    >
+                    <button className="btn-xet" style={{ background: calculateScore(gameState.dealer.hand) >= 15 ? 'red' : '#555', color: 'white', cursor: calculateScore(gameState.dealer.hand) >= 15 ? 'pointer' : 'not-allowed' }} onClick={() => checkPlayer(idx)} disabled={calculateScore(gameState.dealer.hand) < 15}>
                       XÉT {calculateScore(gameState.dealer.hand) < 15 && '(Cần 15đ)'}
                     </button>
                   )}
@@ -397,7 +380,6 @@ export default function GameDashboard() {
           ))}
         </div>
       </div>
-
       <div className="controls">
         {gameState.dealer.id === profile?.id && (
           <button className="btn btn-gold" onClick={startNewGame}>
