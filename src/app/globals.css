@@ -1,6 +1,5 @@
 :root {
   --gold: #d4af37;
-  --dark-green: #0a2e1f;
   --felt-green: #1a4a35;
   --table-border: #4a3721;
 }
@@ -16,7 +15,8 @@ body {
   background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
   color: white;
   height: 100vh;
-  overflow: hidden; /* Bỏ thanh scroll */
+  width: 100vw;
+  overflow: hidden; /* Cấm scroll toàn trang */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -26,158 +26,117 @@ main {
   width: 100vw;
   height: 100vh;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
+  overflow: hidden;
 }
 
-/* Bàn Casino */
+/* Bàn Casino hình Oval */
 .table-area {
-  position: relative;
-  width: 85vw;
-  height: 70vh;
-  margin-top: 50px;
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  height: 65vh;
   background: var(--felt-green);
-  border: 15px solid var(--table-border);
-  border-radius: 500px; /* Tạo hình Oval */
+  border: 12px solid var(--table-border);
+  border-radius: 400px;
   box-shadow: 
-    inset 0 0 100px rgba(0,0,0,0.5),
-    0 20px 50px rgba(0,0,0,0.8),
-    0 0 20px var(--gold);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+    inset 0 0 100px rgba(0,0,0,0.6),
+    0 20px 60px rgba(0,0,0,0.8),
+    0 0 15px var(--gold);
+  z-index: 1;
 }
 
 /* Nhà cái ở giữa phía trên */
 .dealer-section {
   position: absolute;
-  top: -40px;
+  top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 10;
+  z-index: 100;
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(0,0,0,0.8);
-  padding: 15px 30px;
-  border-radius: 20px;
+  background: rgba(0,0,0,0.9);
+  padding: 10px 25px;
+  border-radius: 15px;
   border: 2px solid var(--gold);
-  box-shadow: 0 0 20px var(--gold);
+  box-shadow: 0 0 15px var(--gold);
 }
 
-/* Vị trí người chơi xung quanh */
+/* Container chứa các ghế người chơi */
 .players-grid {
   position: absolute;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
   pointer-events: none;
+  z-index: 50;
 }
 
 .player-box {
   position: absolute;
-  width: 160px;
-  background: rgba(0,0,0,0.85);
-  border: 2px solid rgba(255,255,255,0.1);
-  border-radius: 15px;
+  width: 150px;
+  background: rgba(10, 10, 10, 0.95);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
   padding: 10px;
   pointer-events: auto;
-  transition: all 0.3s ease;
-  z-index: 5;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-.player-box.active {
-  border-color: var(--gold);
-  box-shadow: 0 0 15px var(--gold);
-}
+.player-box.active { border-color: var(--gold); box-shadow: 0 0 15px var(--gold); }
+.player-box.highlight-turn { border-color: #ff4757; box-shadow: 0 0 20px #ff4757; }
 
-.player-box.highlight-turn {
-  border-color: #ff4757;
-  transform: scale(1.05);
-  box-shadow: 0 0 20px #ff4757;
-}
+/* Tọa độ 10 ghế quanh bàn Oval (Tính toán lại để cân đối) */
+.seat-0 { top: 25%; left: 15%; }
+.seat-1 { top: 48%; left: 10%; }
+.seat-2 { top: 72%; left: 15%; }
+.seat-3 { top: 85%; left: 32%; }
+.seat-4 { top: 88%; left: 50%; transform: translateX(-50%); }
+.seat-5 { top: 85%; right: 32%; }
+.seat-6 { top: 72%; right: 15%; }
+.seat-7 { top: 48%; right: 10%; }
+.seat-8 { top: 25%; right: 15%; }
+.seat-9 { top: 12%; right: 30%; } /* Ghế gần nhà cái */
 
-/* Tọa độ các ghế (10 ghế) */
-.seat-0 { left: 5%; top: 20%; }
-.seat-1 { left: 2%; top: 45%; }
-.seat-2 { left: 8%; top: 70%; }
-.seat-3 { left: 25%; top: 85%; }
-.seat-4 { left: 42%; top: 90%; }
-.seat-5 { right: 42%; top: 90%; }
-.seat-6 { right: 25%; top: 85%; }
-.seat-7 { right: 8%; top: 70%; }
-.seat-8 { right: 2%; top: 45%; }
-.seat-9 { right: 5%; top: 20%; }
-
-/* Bài và các thành phần khác */
+/* Bài lá */
 .hand {
   display: flex;
   justify-content: center;
+  min-height: 50px;
   margin: 5px 0;
-  min-height: 60px;
 }
 
 .card-wrapper {
   margin-left: -35px;
-  transition: transform 0.2s;
 }
 .card-wrapper:first-child { margin-left: 0; }
-.card-wrapper:hover { transform: translateY(-10px) rotate(-5deg); z-index: 100; }
 
-.score-badge {
-  font-weight: bold;
-  color: var(--gold);
-  text-shadow: 0 0 5px black;
-}
-
-.balance-tag {
-  color: #2ecc71;
-  font-weight: bold;
-  font-size: 0.9rem;
-}
-
-.status-tag {
-  padding: 2px 8px;
-  border-radius: 5px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  text-transform: uppercase;
-}
+/* Các thành phần UI */
+.score-badge { color: var(--gold); font-weight: bold; }
+.balance-tag { color: #2ecc71; font-weight: bold; font-size: 0.8rem; }
+.status-tag { font-size: 0.65rem; padding: 2px 5px; border-radius: 4px; text-align: center; }
 .status-win { background: #2ecc71; color: black; }
 .status-lose { background: #e74c3c; color: white; }
-.status-draw { background: #f1c40f; color: black; }
 
 .btn-xet {
   background: var(--gold);
   color: black;
   border: none;
-  padding: 4px 10px;
-  border-radius: 5px;
+  padding: 5px 8px;
+  border-radius: 6px;
   font-size: 0.7rem;
   font-weight: bold;
   cursor: pointer;
 }
 
-.bet-input {
-  width: 100%;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: white;
-  padding: 5px;
-  border-radius: 5px;
-  font-size: 0.8rem;
-  margin-top: 5px;
-}
+.transaction-sidebar { z-index: 1000; }
 
-.transaction-sidebar {
-  transition: transform 0.3s;
-}
-.transaction-sidebar:hover { transform: translateX(5px); }
-
-@keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.3; }
-  100% { opacity: 1; }
-}
+/* Xóa scrollbar hoàn toàn trên mọi trình duyệt */
+::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }

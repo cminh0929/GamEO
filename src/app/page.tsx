@@ -387,12 +387,13 @@ export default function GameDashboard() {
         </div>
       </div>
       
-      <div className="table-area">
-        <div className="dealer-section">
-          <div className="score-badge">
-            {gameState.dealer.name} - ${gameState.dealer.balance.toLocaleString()} 
-            {gameState.turnIndex === -1 && gameState.status === 'playing' && <span style={{ color: 'var(--gold)', marginLeft: '10px', animation: 'blink 1s infinite' }}>[LƯỢT NHÀ CÁI]</span>}
-          </div>
+      <div className="table-area"></div>
+
+      <div className="dealer-section">
+        <div className="score-badge">
+          {gameState.dealer.name} - ${gameState.dealer.balance.toLocaleString()} 
+          {gameState.turnIndex === -1 && gameState.status === 'playing' && <span style={{ color: 'var(--gold)', marginLeft: '10px', animation: 'blink 1s infinite' }}>[LƯỢT NHÀ CÁI]</span>}
+        </div>
           <div className="hand">
             {gameState.dealer.hand.map((card, i) => {
               const isMeChecked = gameState.players.some(p => p.id === profile?.id && p.isChecked);
@@ -430,16 +431,18 @@ export default function GameDashboard() {
               </button>
             </div>
           )}
-        </div>
+      </div>
 
-        <div className="players-grid">
-          {gameState.players.map((player, idx) => (
+      <div className="players-grid">
+        {gameState.players.map((player, idx) => (
             <div key={idx} className={`player-box seat-${idx} ${player.id === profile?.id ? 'active' : ''} ${gameState.turnIndex === idx ? 'highlight-turn' : ''}`}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: player.id ? 'var(--gold)' : '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</div>
-                {gameState.turnIndex === idx && <div style={{ color: '#ff4757', fontWeight: 'bold' }}>{timeLeft}s</div>}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: player.id ? 'var(--gold)' : '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }}>
+                  {player.name}
+                </div>
+                {gameState.turnIndex === idx && <div style={{ color: '#ff4757', fontWeight: 'bold', fontSize: '0.75rem' }}>{timeLeft}s</div>}
               </div>
-              {player.id !== '' && <div className="balance-tag" style={{ color: '#2ecc71', fontSize: '0.75rem' }}>${player.balance.toLocaleString()}</div>}
+              {player.id !== '' && <div className="balance-tag" style={{ color: '#2ecc71', fontSize: '0.7rem', marginTop: '-2px' }}>${player.balance.toLocaleString()}</div>}
               <div className="hand">
                 {player.hand.length > 0 ? player.hand.map((card, i) => {
                   const isVisible = player.id === profile?.id || player.isChecked || gameState.status === 'ended';
@@ -486,7 +489,6 @@ export default function GameDashboard() {
               )}
             </div>
           ))}
-        </div>
       </div>
       <div className="controls">
         {gameState.dealer.id === profile?.id && (
