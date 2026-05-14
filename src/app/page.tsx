@@ -312,7 +312,26 @@ export default function GameDashboard() {
           ) : gameState.dealer.id === profile?.id && (
             <div className="controls" style={{ marginTop: '10px' }}>
               {gameState.status === 'playing' && gameState.turnIndex === -1 && <button className="btn-xet" onClick={dealerHit}>Rút bài Cái</button>}
-              <button className="btn-xet" style={{ marginLeft: '10px' }} onClick={() => updateRemoteState({...gameState, status: 'ended'})}>Kết thúc ván</button>
+              <button className="btn-xet" style={{ marginLeft: '10px' }} onClick={() => {
+                const newState = { ...gameState };
+                newState.status = 'ended';
+                // Reset Nhà Cái
+                newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
+                // Reset Tất cả người chơi (cho mọi người "out")
+                newState.players = newState.players.map((p, i) => ({
+                  id: '',
+                  name: `Vị trí ${i + 1}`,
+                  hand: [],
+                  score: 0,
+                  status: 'playing',
+                  isChecked: false,
+                  gameResult: null,
+                  balance: 0,
+                  currentBet: 0,
+                }));
+                updateRemoteState(newState);
+                alert("Ván bài đã kết thúc. Bàn chơi đã được đặt lại!");
+              }}>Kết thúc ván & Reset bàn</button>
             </div>
           )}
         </div>
