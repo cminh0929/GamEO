@@ -192,9 +192,16 @@ export default function GameDashboard() {
     const isGameActive = gameState.status === 'playing';
 
     if (newState.dealer.id === profile.id) {
-      if (isGameActive) {
+      const isRoomActive = gameState.status === 'playing' || gameState.status === 'betting';
+      if (isRoomActive) {
         newState.status = 'ended';
-        newState.players.forEach(p => { p.hand = []; p.currentBet = 0; p.gameResult = null; p.isChecked = false; });
+        newState.players.forEach(p => { 
+          p.hand = []; 
+          p.currentBet = 0; 
+          p.gameResult = null; 
+          p.isChecked = false; 
+          p.status = 'playing';
+        });
       }
       newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
     } else {
