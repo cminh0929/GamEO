@@ -906,3 +906,141 @@ body {
   z-index: 50;
 }
 
+/* ============================================================
+   SPECTATOR DRAWER (slide in/out from right)
+   ============================================================ */
+.spectator-drawer {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 150;
+}
+
+/* Toggle button (the <> tab) */
+.spectator-toggle {
+  position: relative;
+  background: rgba(20, 20, 30, 0.92);
+  border: 1px solid rgba(212,175,55,0.35);
+  border-right: none;
+  color: var(--gold);
+  font-size: 1.4rem;
+  font-weight: 900;
+  width: 28px;
+  height: 70px;
+  border-radius: 10px 0 0 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.spectator-toggle:hover { background: rgba(212,175,55,0.12); }
+
+.spectator-count {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 900;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+
+/* Sliding panel */
+.spectator-content {
+  width: 0;
+  overflow: hidden;
+  background: rgba(10, 10, 18, 0.96);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-right: none;
+  border-radius: 14px 0 0 14px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+.spectator-drawer.open .spectator-content {
+  width: 200px;
+}
+
+.spectator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px 8px;
+  color: var(--gold);
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(212,175,55,0.15);
+}
+
+.spectator-total {
+  color: rgba(255,255,255,0.35);
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
+.spectator-empty {
+  padding: 16px 14px;
+  color: rgba(255,255,255,0.3);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.spectator-list {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.spectator-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  transition: background 0.15s;
+}
+.spectator-item:hover { background: rgba(255,255,255,0.04); }
+
+.spectator-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(212,175,55,0.4);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.spectator-avatar-placeholder {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(212,175,55,0.2);
+  border: 1.5px solid rgba(212,175,55,0.4);
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.spectator-name {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+

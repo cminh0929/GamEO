@@ -6,9 +6,11 @@ import { useTransactions } from '../../../hooks/useTransactions';
 import { useXiDachRoom } from '../../../hooks/useXiDachRoom';
 import { useGameTimer } from '../../../hooks/useGameTimer';
 import { useTabGuard } from '../../../hooks/useTabGuard';
+import { useSpectators } from '../../../hooks/useSpectators';
 import { AuthGuard } from '../../../components/platform/AuthGuard';
 import { DealerArea } from '../../../components/xi-dach/DealerArea';
 import { PlayerSeat } from '../../../components/xi-dach/PlayerSeat';
+import { SpectatorPanel } from '../../../components/xi-dach/SpectatorPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +61,9 @@ function XiDachGame() {
     stand: actions.stand,
     isBlocked,
   });
+
+  const mePresence = profile ? { id: profile.id, name: profile.username, avatarUrl: profile.avatar_url ?? undefined } : null;
+  const { spectators, allPresent } = useSpectators(ROOM_ID, mePresence, gameState);
 
   // Show "XÉT TẤT CẢ" when all seated players have finished their turns
   const isDealer = gameState.dealer.id === profile?.id;
@@ -204,6 +209,9 @@ function XiDachGame() {
 
       {/* Version badge */}
       <div className="version-badge">v1.0.2</div>
+
+      {/* Spectator drawer */}
+      <SpectatorPanel spectators={spectators} allPresent={allPresent} />
     </main>
   );
 }
