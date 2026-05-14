@@ -7,10 +7,12 @@ import { useXiDachRoom } from '../../../hooks/useXiDachRoom';
 import { useGameTimer } from '../../../hooks/useGameTimer';
 import { useTabGuard } from '../../../hooks/useTabGuard';
 import { useSpectators } from '../../../hooks/useSpectators';
+import { useChat } from '../../../hooks/useChat';
 import { AuthGuard } from '../../../components/platform/AuthGuard';
 import { DealerArea } from '../../../components/xi-dach/DealerArea';
 import { PlayerSeat } from '../../../components/xi-dach/PlayerSeat';
 import { SpectatorPanel } from '../../../components/xi-dach/SpectatorPanel';
+import { ChatPanel } from '../../../components/xi-dach/ChatPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +66,7 @@ function XiDachGame() {
 
   const mePresence = profile ? { id: profile.id, name: profile.username, avatarUrl: profile.avatar_url ?? undefined } : null;
   const { spectators, allPresent } = useSpectators(ROOM_ID, mePresence, gameState);
+  const { messages: chatMessages, sendMessage, bubbles } = useChat(ROOM_ID, mePresence);
 
   // Show "XÉT TẤT CẢ" when all seated players have finished their turns
   const isDealer = gameState.dealer.id === profile?.id;
@@ -130,6 +133,7 @@ function XiDachGame() {
               dealer={gameState.dealer}
               gameState={gameState}
               profile={profile}
+              chatBubble={bubbles[gameState.dealer.id]}
               onDealerHit={actions.dealerHit}
               onResetTable={actions.resetTableToEmpty}
               onTakeDealer={() => actions.takeRole('dealer')}
@@ -154,6 +158,7 @@ function XiDachGame() {
             gameState={gameState}
             profile={profile}
             timeLeft={timeLeft}
+            chatBubble={bubbles[player.id]}
             onSit={(i) => actions.takeRole('player', i)}
             onKick={actions.kickPlayer}
             onPlaceBet={actions.placeBet}
@@ -212,6 +217,9 @@ function XiDachGame() {
 
       {/* Spectator drawer */}
       <SpectatorPanel spectators={spectators} allPresent={allPresent} />
+
+      {/* Chat drawer */}
+      <ChatPanel messages={chatMessages} onSend={sendMessage} myId={profile?.id ?? null} />
     </main>
   );
 }

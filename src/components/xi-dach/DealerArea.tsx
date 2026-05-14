@@ -10,13 +10,14 @@ interface DealerAreaProps {
   dealer: Player;
   gameState: GameState;
   profile: Profile | null;
+  chatBubble?: string;
   onDealerHit: () => void;
   onResetTable: () => void;
   onTakeDealer: () => void;
 }
 
 export function DealerArea({
-  dealer, gameState, profile, onDealerHit, onResetTable, onTakeDealer,
+  dealer, gameState, profile, chatBubble, onDealerHit, onResetTable, onTakeDealer,
 }: DealerAreaProps) {
   const isDealer = dealer.id === profile?.id;
   const isMeChecked = gameState.players.some((p) => p.id === profile?.id && p.isChecked);
@@ -24,6 +25,10 @@ export function DealerArea({
 
   return (
     <div className="dealer-area">
+      {/* Dealer speech bubble */}
+      {chatBubble && dealer.id !== '' && (
+        <div className="seat-bubble dealer-bubble">{chatBubble}</div>
+      )}
       <div className="dealer-info">
         {dealer.avatarUrl && (
           <img src={dealer.avatarUrl} alt="Dealer" className="dealer-avatar" />

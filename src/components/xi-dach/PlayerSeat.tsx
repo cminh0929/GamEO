@@ -12,6 +12,7 @@ interface PlayerSeatProps {
   gameState: GameState;
   profile: Profile | null;
   timeLeft: number;
+  chatBubble?: string;
   onSit: (index: number) => void;
   onKick: (index: number) => void;
   onPlaceBet: (index: number, amount: number) => void;
@@ -21,7 +22,7 @@ interface PlayerSeatProps {
 }
 
 export function PlayerSeat({
-  player, index, gameState, profile, timeLeft,
+  player, index, gameState, profile, timeLeft, chatBubble,
   onSit, onKick, onPlaceBet, onHit, onStand, onCheckPlayer,
 }: PlayerSeatProps) {
   const isMe = player.id === profile?.id;
@@ -41,6 +42,10 @@ export function PlayerSeat({
         isMyTurn ? 'active-turn' : '',
       ].filter(Boolean).join(' ')}
     >
+      {/* Speech bubble */}
+      {chatBubble && player.id !== '' && (
+        <div className="seat-bubble">{chatBubble}</div>
+      )}
       {/* Header: avatar, name, timer, kick */}
       <div className="player-header">
         {player.avatarUrl && (
