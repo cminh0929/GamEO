@@ -124,21 +124,34 @@ export default function GameDashboard() {
       } else {
         setTimeLeft(0);
       }
+  // --- 4. TỰ ĐỘNG MỜI NHÀ CÁI RỜI BÀN KHI TREO MÁY ---
+  useEffect(() => {
+    let timer: any;
+    // Nếu có Nhà Cái, bắt đầu đếm ngược từ hành động cuối cùng
+    if (gameState.dealer.id !== '') {
+      timer = setInterval(() => {
+        const now = Date.now();
+        const diff = Math.floor((now - (gameState.lastActionAt || now)) / 1000);
+        const remaining = 60 - diff;
 
-      // Idle Timeout (1 phút không tạo ván mới)
-      if (gameState.status === 'ended' && gameState.players.some(p => p.id !== '')) {
-        const idleDiff = Math.max(0, 60 - Math.floor((now - (gameState.lastActionAt || now)) / 1000));
-        setIdleTimeLeft(idleDiff);
-        
-        const isDealer = gameState.dealer.id === profile?.id;
-        const firstActivePlayer = gameState.players.find(p => p.id !== '')?.id === profile?.id;
-        if (idleDiff === 0 && (isDealer || firstActivePlayer)) resetTableToEmpty();
-      } else {
-        setIdleTimeLeft(60);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [gameState.turnIndex, gameState.turnDeadline, gameState.status, gameState.lastActionAt, profile]);
+        if (remaining <= 0) {
+          // Hết 60 giây không hành động -> Mời Nhà Cái rời bàn
+          const newState = { ...gameState, status: 'ended', lastActionAt: Date.now() };
+          newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
+          newState.players.forEach(p => { 
+            p.hand = []; p.currentBet = 0; p.gameResult = null; p.isChecked = false; p.status = 'playing';
+          });
+          updateRemoteState(newState);
+          setIdleTimeLeft(60);
+        } else {
+          setIdleTimeLeft(remaining);
+        }
+      }, 1000);
+    } else {
+      setIdleTimeLeft(60);
+    }
+    return () => clearInterval(timer);
+  }, [gameState.dealer.id, gameState.lastActionAt]);
 
   const resetTableToEmpty = async () => {
     const emptyState: GameState = {
@@ -183,6 +196,13 @@ export default function GameDashboard() {
     } else if (index !== undefined) {
       newState.players[index] = { ...newState.players[index], id: profile.id, name: profile.username, balance: profile.balance, avatarUrl: profile.avatar_url };
     }
+    updateRemoteState(newState);
+  };
+
+  const kickPlayer = (index: number) => {
+    if (gameState.dealer.id !== profile?.id) return;
+    const newState = { ...gameState, lastActionAt: Date.now() };
+    newState.players[index] = { id: '', name: `Vị trí ${index + 1}`, hand: [], score: 0, status: 'playing', isChecked: false, gameResult: null, balance: 0, currentBet: 0 };
     updateRemoteState(newState);
   };
 
@@ -438,6 +458,9 @@ export default function GameDashboard() {
               {player.avatarUrl && <img src={player.avatarUrl} alt="Avt" className="player-avatar-img" />}
               <span className="name">{player.name}</span>
               {gameState.turnIndex === idx && <span className="timer">{timeLeft}s</span>}
+              {gameState.dealer.id === profile?.id && player.id !== '' && player.id !== profile.id && (
+                <button className="btn-kick" onClick={(e) => { e.stopPropagation(); kickPlayer(idx); }}>❌</button>
+              )}
             </div>
 
             {/* Bài người chơi */}
@@ -509,9 +532,9 @@ export default function GameDashboard() {
         {profile && <button className="btn-leave" onClick={leaveRole}>Rời bàn</button>}
       </div>
 
-      {/* Thông báo Timeout */}
-      {gameState.status === 'ended' && gameState.players.some(p => p.id !== '') && (
-        <div className="idle-timer">⚠️ Bàn tự động đóng sau {idleTimeLeft}s</div>
+      {/* Thông báo Idle cho Nhà Cái */}
+      {gameState.dealer.id !== '' && idleTimeLeft < 30 && (
+        <div className="idle-timer">⚠️ Nhà Cái vắng mặt? Tự thoát sau {idleTimeLeft}s</div>
       )}
 
       {showAvatarPicker && profile && (
