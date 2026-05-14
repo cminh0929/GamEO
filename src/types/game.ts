@@ -20,6 +20,7 @@ export interface Player {
   balance: number;
   currentBet: number;
   isSpinning?: boolean;
+  avatarUrl?: string;
 }
 
 export interface GameState {

@@ -6,6 +6,8 @@ import { createDeck, shuffle, calculateScore, checkSpecialHands } from '../lib/g
 import { Card } from '../components/Card';
 import { supabase } from '../lib/supabase';
 import { Auth } from '../components/Auth';
+import { AvatarPicker } from '../components/AvatarPicker';
+import { PRESET_AVATARS } from '../lib/constants';
 
 const ROOM_ID = 'gameo-table-1';
 export const dynamic = 'force-dynamic';
@@ -25,6 +27,7 @@ export default function GameDashboard() {
   const [idleTimeLeft, setIdleTimeLeft] = useState<number>(60);
   const [lastKeyPressed, setLastKeyPressed] = useState<string>('');
   const [logs, setLogs] = useState<TransactionLog[]>([]);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   
   const [gameState, setGameState] = useState<GameState>({
     deck: [],
@@ -176,9 +179,9 @@ export default function GameDashboard() {
     
     const newState = { ...gameState, lastActionAt: Date.now() };
     if (type === 'dealer') {
-      newState.dealer = { ...newState.dealer, id: profile.id, name: `${profile.username} 👑`, balance: profile.balance };
+      newState.dealer = { ...newState.dealer, id: profile.id, name: `${profile.username} 👑`, balance: profile.balance, avatarUrl: profile.avatar_url };
     } else if (index !== undefined) {
-      newState.players[index] = { ...newState.players[index], id: profile.id, name: profile.username, balance: profile.balance };
+      newState.players[index] = { ...newState.players[index], id: profile.id, name: profile.username, balance: profile.balance, avatarUrl: profile.avatar_url };
     }
     updateRemoteState(newState);
   };
@@ -361,6 +364,9 @@ export default function GameDashboard() {
         </div>
         {profile && (
           <div className="user-info">
+            <div className="user-avatar-wrap" onClick={() => setShowAvatarPicker(true)}>
+              <img src={profile.avatar_url || PRESET_AVATARS[0]} alt="Avatar" className="user-avatar-mini" />
+            </div>
             <span className="user-name">{profile.username}</span>
             <button className="btn-logout" onClick={() => supabase.auth.signOut()}>Đăng xuất</button>
           </div>
@@ -377,6 +383,9 @@ export default function GameDashboard() {
             {/* Khu vực Nhà Cái */}
             <div className="dealer-area">
               <div className="dealer-info">
+                {gameState.dealer.avatarUrl && (
+                  <img src={gameState.dealer.avatarUrl} alt="Dealer" className="dealer-avatar" />
+                )}
                 <span className={gameState.dealer.id ? "dealer-name" : "dealer-name empty"}>
                   {gameState.dealer.id ? gameState.dealer.name : "ĐANG TRỐNG"}
                 </span>
@@ -419,6 +428,7 @@ export default function GameDashboard() {
           <div key={idx} className={`player-box seat-${idx} ${player.id === profile?.id ? 'is-me' : ''} ${gameState.turnIndex === idx ? 'active-turn' : ''}`}>
             {/* Tên & Thời gian */}
             <div className="player-header">
+              {player.avatarUrl && <img src={player.avatarUrl} alt="Avt" className="player-avatar-img" />}
               <span className="name">{player.name}</span>
               {gameState.turnIndex === idx && <span className="timer">{timeLeft}s</span>}
             </div>
@@ -495,6 +505,18 @@ export default function GameDashboard() {
       {/* Thông báo Timeout */}
       {gameState.status === 'ended' && gameState.players.some(p => p.id !== '') && (
         <div className="idle-timer">⚠️ Bàn tự động đóng sau {idleTimeLeft}s</div>
+      )}
+
+      {showAvatarPicker && profile && (
+        <AvatarPicker 
+          userId={profile.id} 
+          currentAvatar={profile.avatar_url}
+          onClose={() => setShowAvatarPicker(false)}
+          onUpdate={(url) => {
+            setProfile({ ...profile, avatar_url: url });
+            setShowAvatarPicker(false);
+          }}
+        />
       )}
     </main>
   );
