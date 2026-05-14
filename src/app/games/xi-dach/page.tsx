@@ -96,6 +96,18 @@ function XiDachGame() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
+  // ── Idle auto-kick: khi dealer vắng mặt quá 60s, người chơi đầu tiên reset bàn ──
+  useEffect(() => {
+    if (idleTimeLeft !== 0) return;
+    if (!profile) return;
+    if (gameState.dealer.id === '') return;
+    if (gameState.dealer.id === profile.id) return; // dealer tự kỳ nên kông tự kick
+    // Chỉ cho 1 client trigger (người chơi ở vị trí 0 hoặc player đầu tiên)
+    const firstSeated = gameState.players.find((p) => p.id !== '');
+    if (firstSeated?.id !== profile.id) return;
+    actions.resetTableToEmpty();
+  }, [idleTimeLeft, profile, gameState.dealer.id, gameState.players, actions]);
+
   // ── Blocked tab overlay ──────────────────────────────────────────────────
   if (isBlocked) return <BlockedTabScreen />;
 
@@ -183,10 +195,10 @@ function XiDachGame() {
         )}
       </div>
 
-      {/* Idle timer warning */}
-      {gameState.dealer.id !== '' && idleTimeLeft < 30 && (
+      {/* Idle timer warning — chỉ hiện với người không phải dealer */}
+      {gameState.dealer.id !== '' && !isDealer && idleTimeLeft < 30 && (
         <div className="idle-timer">
-          ⚠️ Nhà Cái vắng mặt? Tự thoát sau {idleTimeLeft}s
+          ⚠️ Nhà Cái vắng mặt — bàn tự reset sau {idleTimeLeft}s
         </div>
       )}
     </main>
