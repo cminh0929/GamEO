@@ -9,6 +9,8 @@ import { Auth } from '../components/Auth';
 
 const ROOM_ID = 'gameo-table-1';
 
+export const dynamic = 'force-dynamic';
+
 export default function GameDashboard() {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
