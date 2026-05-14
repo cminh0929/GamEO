@@ -156,8 +156,15 @@ export function useXiDachRoom(
     if (gs.dealer.id !== profile?.id) return alert('Chỉ Nhà Cái mới được bắt đầu!');
 
     if (gs.status !== 'betting') {
-      const newState = { ...gs, status: 'betting' as GameStatus, lastActionAt: Date.now() };
-      newState.players.forEach((p) => { p.currentBet = 0; p.gameResult = null; p.isChecked = false; p.hand = []; p.status = 'playing'; });
+      const newState = {
+        ...gs,
+        status: 'betting' as GameStatus,
+        lastActionAt: Date.now(),
+        dealer: { ...gs.dealer, hand: [], score: 0, status: 'playing' as const },
+      };
+      newState.players = newState.players.map((p) => ({
+        ...p, currentBet: 0, gameResult: null, isChecked: false, hand: [], status: 'playing' as const,
+      }));
       updateRemoteState(newState);
       return;
     }
