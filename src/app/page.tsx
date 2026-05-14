@@ -518,11 +518,14 @@ export default function GameDashboard() {
                       <button className="btn-mini stand" onClick={() => stand(idx)}>Dừng</button>
                     </div>
                   )}
-                  {gameState.dealer.id === profile?.id && gameState.turnIndex === -1 && player.hand.length > 0 && !player.isChecked && (
+                  {gameState.dealer.id === profile?.id && player.hand.length > 0 && !player.isChecked && (
                     <button 
                       className="btn-mini check" 
                       onClick={() => checkPlayer(idx)} 
-                      disabled={(calculateScore(gameState.dealer.hand) < 15 && gameState.dealer.hand.length < 5) || player.status === 'playing'}
+                      disabled={
+                        (calculateScore(gameState.dealer.hand) < 15 && gameState.dealer.hand.length < 5) || 
+                        player.status === 'playing'
+                      }
                     >
                       XÉT
                     </button>
