@@ -17,6 +17,9 @@ export interface Player {
   status: 'playing' | 'stay' | 'bust' | 'xi_dach' | 'xi_bang' | 'ngu_linh';
   isChecked?: boolean;
   gameResult?: 'win' | 'lose' | 'draw' | null;
+  balance: number;
+  currentBet: number;
+  isSpinning?: boolean;
 }
 
 export interface GameState {
