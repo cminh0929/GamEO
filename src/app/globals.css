@@ -894,3 +894,15 @@ body {
   margin-top: 4px;
 }
 
+/* Version badge */
+.version-badge {
+  position: fixed;
+  bottom: 10px;
+  right: 14px;
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 50;
+}
+

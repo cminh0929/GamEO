@@ -201,6 +201,9 @@ function XiDachGame() {
           ⚠️ Nhà Cái vắng mặt — bàn tự reset sau {idleTimeLeft}s
         </div>
       )}
+
+      {/* Version badge */}
+      <div className="version-badge">v1.0.2</div>
     </main>
   );
 }
