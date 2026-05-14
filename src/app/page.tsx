@@ -52,38 +52,7 @@ export default function GameDashboard() {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (data) {
       setProfile(data);
-      
-      // Kiểm tra sự kiện vòng quay mỗi ngày
-      const today = new Date().toISOString().split('T')[0];
-      if (data.last_spin_date !== today) {
-        setIsBigSpinning(true);
-        runDailySpinner(userId, data.balance);
-      }
     }
-  };
-
-  const runDailySpinner = (userId: string, currentBalance: number) => {
-    setTimeout(async () => {
-      // Quay thưởng ngẫu nhiên từ 100k đến 500k cho sự kiện hàng ngày
-      const bonus = (Math.floor(Math.random() * 5) + 1) * 100000;
-      const today = new Date().toISOString().split('T')[0];
-      
-      const { data } = await supabase
-        .from('profiles')
-        .update({ 
-          balance: currentBalance + bonus, 
-          last_spin_date: today 
-        })
-        .eq('id', userId)
-        .select()
-        .single();
-      
-      if (data) {
-        setProfile(data);
-        setIsBigSpinning(false);
-        alert(`Chúc mừng! Bạn nhận được quà điểm danh hàng ngày: $${bonus.toLocaleString()}!`);
-      }
-    }, 3000);
   };
 
   useEffect(() => {
@@ -235,14 +204,6 @@ export default function GameDashboard() {
 
   return (
     <main>
-      {isBigSpinning && (
-        <div className="big-spinner-overlay">
-          <div className="big-spinner-box">🎁</div>
-          <h2 style={{ color: 'var(--gold)' }}>SỰ KIỆN QUAY THƯỞNG HÀNG NGÀY</h2>
-          <p style={{ color: 'white' }}>Bạn nhận được quà điểm danh hôm nay!</p>
-        </div>
-      )}
-
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '1200px', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <h1>XÌ DÁCH CASINO</h1>
