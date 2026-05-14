@@ -32,7 +32,6 @@ export const calculateScore = (hand: CardType[]): number => {
   let score = 0;
   let aceCount = 0;
 
-  // Tính điểm các lá bài không phải Át trước
   for (const card of hand) {
     if (card.rank === 'A') {
       aceCount++;
@@ -41,14 +40,19 @@ export const calculateScore = (hand: CardType[]): number => {
     score += getCardValue(card.rank);
   }
 
-  // Cộng mỗi con Át ít nhất 1 điểm
-  score += aceCount;
+  // Luật Xì Dách Việt Nam:
+  // 4-5 lá: Át tính là 1
+  if (hand.length >= 4) {
+    return score + aceCount;
+  }
 
-  // Với mỗi con Át, thử cộng thêm 10 điểm (để biến nó thành 11)
-  // nếu tổng điểm vẫn không vượt quá 21
+  // 2-3 lá: Át linh hoạt
+  score += aceCount;
   for (let i = 0; i < aceCount; i++) {
     if (score + 10 <= 21) {
       score += 10;
+    } else if (hand.length === 3 && score + 9 <= 21) {
+      score += 9;
     }
   }
 
