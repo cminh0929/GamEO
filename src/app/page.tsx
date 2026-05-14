@@ -206,6 +206,7 @@ export default function GameDashboard() {
 
   const kickPlayer = (index: number) => {
     if (gameState.dealer.id !== profile?.id) return;
+    if (gameState.status === 'playing') return alert("Không thể kích người chơi khi đang trong ván bài!");
     const newState = { ...gameState, lastActionAt: Date.now() };
     newState.players[index] = { id: '', name: `Vị trí ${index + 1}`, hand: [], score: 0, status: 'playing', isChecked: false, gameResult: null, balance: 0, currentBet: 0 };
     updateRemoteState(newState);
@@ -333,7 +334,7 @@ export default function GameDashboard() {
   const checkPlayer = async (idx: number) => {
     if (gameState.dealer.id !== profile?.id) return;
     const dealerScore = calculateScore(gameState.dealer.hand);
-    if (dealerScore < 15) return alert("Nhà Cái phải đủ ít nhất 15 điểm mới được quyền XÉT!");
+    if (dealerScore < 15 && gameState.dealer.hand.length < 5) return alert("Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!");
 
     const updatedPlayers = [...gameState.players];
     const player = updatedPlayers[idx];
@@ -377,6 +378,7 @@ export default function GameDashboard() {
 
   const dealerHit = () => {
     if (gameState.dealer.id !== profile?.id) return;
+    if (gameState.dealer.hand.length >= 5) return alert("Nhà Cái đã đạt giới hạn 5 lá bài!");
     if (gameState.players.some(p => p.id !== '' && p.isChecked)) return alert("Đã xét bài, không thể rút thêm!");
     const newDeck = [...gameState.deck];
     const newCard = newDeck.pop()!;
@@ -496,17 +498,34 @@ export default function GameDashboard() {
               ) : (
                 <>
                   <div className="bet-display">${player.currentBet.toLocaleString()}</div>
-                  {player.id === profile?.id && gameState.status === 'betting' && (
-                    <input type="number" className="bet-input" placeholder="Cược..." onBlur={(e) => placeBet(idx, parseInt(e.target.value))} />
-                  )}
+                      {player.id === profile?.id && gameState.status === 'betting' && (
+                        <input 
+                          type="number" 
+                          className="bet-input" 
+                          placeholder="Cược..." 
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              placeBet(idx, parseInt((e.target as HTMLInputElement).value));
+                              (e.target as HTMLInputElement).blur();
+                            }
+                          }}
+                          onBlur={(e) => placeBet(idx, parseInt(e.target.value))} 
+                        />
+                      )}
                   {player.id === profile?.id && gameState.turnIndex === idx && (
                     <div className="action-row">
                       <button className="btn-mini hit" onClick={() => hit(idx)}>Rút</button>
                       <button className="btn-mini stand" onClick={() => stand(idx)}>Dừng</button>
                     </div>
                   )}
-                  {gameState.dealer.id === profile?.id && player.hand.length > 0 && !player.isChecked && (
-                    <button className="btn-mini check" onClick={() => checkPlayer(idx)} disabled={calculateScore(gameState.dealer.hand) < 15 || player.status === 'playing'}>XÉT</button>
+                  {gameState.dealer.id === profile?.id && gameState.turnIndex === -1 && player.hand.length > 0 && !player.isChecked && (
+                    <button 
+                      className="btn-mini check" 
+                      onClick={() => checkPlayer(idx)} 
+                      disabled={(calculateScore(gameState.dealer.hand) < 15 && gameState.dealer.hand.length < 5) || player.status === 'playing'}
+                    >
+                      XÉT
+                    </button>
                   )}
                 </>
               )}
