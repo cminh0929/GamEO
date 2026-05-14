@@ -766,3 +766,131 @@ body {
   50% { opacity: 0.5; }
   100% { opacity: 1; }
 }
+
+/* ============================================================
+   PLAYING CARDS
+   ============================================================ */
+@keyframes card-deal {
+  from { opacity: 0; transform: translateY(-20px) rotate(-5deg) scale(0.8); }
+  to   { opacity: 1; transform: translateY(0)    rotate(0deg)  scale(1);   }
+}
+
+.card {
+  width: 44px;
+  height: 62px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1.5px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3px 4px;
+  font-weight: 900;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+  position: relative;
+  animation: card-deal 0.3s ease both;
+  user-select: none;
+}
+
+.card.red  { color: #e53935; }
+.card.black { color: #111; }
+
+.card .rank {
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.card .suit {
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.card .center-suit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* Face-down card */
+.card.back {
+  background: linear-gradient(135deg, #1a237e 25%, #283593 50%, #1a237e 75%);
+  background-size: 8px 8px;
+  border: 1.5px solid #3949ab;
+}
+
+/* Mini cards in player box — scale down */
+.player-box .hand {
+  gap: 2px;
+}
+.player-box .card {
+  width: 34px;
+  height: 50px;
+  font-size: 0.65rem;
+  padding: 2px 3px;
+  border-radius: 5px;
+}
+.player-box .card .center-suit { font-size: 1rem; }
+
+/* Action buttons inside player seat */
+.action-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.btn-mini {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-mini.hit   { background: #2ecc71; color: #000; }
+.btn-mini.stand { background: #e74c3c; color: #fff; }
+.btn-mini.check { background: var(--gold); color: #000; }
+.btn-mini:hover { filter: brightness(1.15); transform: scale(1.05); }
+.btn-mini:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* Waiting text */
+.waiting-text {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.35);
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* Player footer */
+.player-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Game status message */
+.game-status-msg {
+  position: absolute;
+  bottom: 18%;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Dealer controls */
+.dealer-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
