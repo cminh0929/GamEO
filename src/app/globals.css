@@ -1,142 +1,280 @@
 :root {
   --gold: #d4af37;
-  --felt-green: #1a4a35;
-  --table-border: #4a3721;
+  --felt: #1a472a;
+  --dark-felt: #0d2b1a;
+  --wood: #3e2723;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Inter', sans-serif;
 }
 
 body {
-  background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+  background-color: #050505;
   color: white;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden; /* Xóa sạch thanh cuộn */
   height: 100vh;
   width: 100vw;
-  overflow: hidden; /* Cấm scroll toàn trang */
+}
+
+/* Container chính */
+.casino-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.casino-header {
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}
+
+.casino-title {
+  font-size: 2.5rem;
+  color: var(--gold);
+  text-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.global-balance {
+  background: rgba(0,0,0,0.6);
+  padding: 10px 25px;
+  border-radius: 30px;
+  border: 2px solid var(--gold);
+  color: var(--gold);
+  font-weight: bold;
+  font-size: 1.2rem;
+  box-shadow: inset 0 0 10px rgba(212,175,55,0.2);
+}
+
+/* BÀN CASINO (OVAL) */
+.casino-table {
+  position: relative;
+  flex: 1;
+  margin: 40px auto;
+  width: 85vw;
+  max-width: 1200px;
+  height: 60vh;
+  perspective: 1000px;
+}
+
+/* Thảm xanh trung tâm */
+.table-felt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, var(--felt) 0%, var(--dark-felt) 100%);
+  border: 15px solid var(--wood);
+  border-radius: 200px; /* Tạo hình Oval */
+  box-shadow: 0 50px 100px rgba(0,0,0,0.8), inset 0 0 50px rgba(0,0,0,0.5);
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-main {
-  width: 100vw;
-  height: 100vh;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Bàn Casino hình Oval */
-.table-area {
-  position: absolute;
-  top: 55%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80vw;
-  height: 65vh;
-  background: var(--felt-green);
-  border: 12px solid var(--table-border);
-  border-radius: 400px;
-  box-shadow: 
-    inset 0 0 100px rgba(0,0,0,0.6),
-    0 20px 60px rgba(0,0,0,0.8),
-    0 0 15px var(--gold);
   z-index: 1;
 }
 
-/* Nhà cái ở giữa phía trên */
-.dealer-section {
+.felt-inner {
+  width: 95%;
+  height: 90%;
+  border: 2px solid rgba(212, 175, 55, 0.2);
+  border-radius: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.table-logo {
   position: absolute;
-  top: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
+  top: 20%;
+  opacity: 0.1;
+  font-size: 4rem;
+  font-weight: 900;
+  color: var(--gold);
+  pointer-events: none;
+}
+
+/* Khu vực Nhà Cái */
+.dealer-area {
+  position: absolute;
+  top: 15%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(0,0,0,0.9);
-  padding: 10px 25px;
-  border-radius: 15px;
-  border: 2px solid var(--gold);
-  box-shadow: 0 0 15px var(--gold);
+  gap: 15px;
+  z-index: 10;
 }
 
-/* Container chứa các ghế người chơi */
-.players-grid {
-  position: absolute;
-  width: 100vw;
-  height: 100vh;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 50;
+.dealer-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
+.dealer-name {
+  color: var(--gold);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.dealer-balance {
+  color: #2ecc71;
+  font-size: 0.9rem;
+}
+
+/* NGƯỜI CHƠI (Tọa độ Oval) */
 .player-box {
   position: absolute;
-  width: 150px;
-  background: rgba(10, 10, 10, 0.95);
-  border: 1px solid rgba(255,255,255,0.15);
+  width: 140px;
+  background: rgba(0,0,0,0.8);
   border-radius: 12px;
   padding: 10px;
-  pointer-events: auto;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+  border: 1px solid rgba(212,175,55,0.3);
+  transition: all 0.3s ease;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
 
-.player-box.active { border-color: var(--gold); box-shadow: 0 0 15px var(--gold); }
-.player-box.highlight-turn { border-color: #ff4757; box-shadow: 0 0 20px #ff4757; }
+.player-box.active-turn {
+  border-color: #ff4757;
+  box-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
+  transform: scale(1.05);
+}
 
-/* Tọa độ 10 ghế quanh bàn Oval (Tính toán lại để cân đối) */
-.seat-0 { top: 25%; left: 15%; }
-.seat-1 { top: 48%; left: 10%; }
-.seat-2 { top: 72%; left: 15%; }
-.seat-3 { top: 85%; left: 32%; }
-.seat-4 { top: 88%; left: 50%; transform: translateX(-50%); }
-.seat-5 { top: 85%; right: 32%; }
-.seat-6 { top: 72%; right: 15%; }
-.seat-7 { top: 48%; right: 10%; }
-.seat-8 { top: 25%; right: 15%; }
-.seat-9 { top: 12%; right: 30%; } /* Ghế gần nhà cái */
+.player-box.is-me {
+  background: rgba(212,175,55,0.1);
+  border-color: var(--gold);
+}
 
-/* Bài lá */
+/* Tọa độ Oval cho 10 người chơi */
+.seat-0 { left: -5%; top: 20%; }
+.seat-1 { left: -5%; top: 50%; }
+.seat-2 { left: -5%; top: 80%; }
+.seat-3 { left: 15%; top: 95%; }
+.seat-4 { left: 45%; top: 105%; }
+.seat-5 { left: 75%; top: 95%; }
+.seat-6 { left: 95%; top: 80%; }
+.seat-7 { left: 95%; top: 50%; }
+.seat-8 { left: 95%; top: 20%; }
+.seat-9 { left: 45%; top: -15%; }
+
+/* Hand & Cards */
 .hand {
   display: flex;
   justify-content: center;
-  min-height: 50px;
-  margin: 5px 0;
+  gap: -20px;
+  height: 60px;
 }
 
-.card-wrapper {
-  margin-left: -35px;
+.hand .card-wrapper {
+  transform: scale(0.6);
+  margin: 0 -15px;
 }
-.card-wrapper:first-child { margin-left: 0; }
 
-/* Các thành phần UI */
-.score-badge { color: var(--gold); font-weight: bold; }
-.balance-tag { color: #2ecc71; font-weight: bold; font-size: 0.8rem; }
-.status-tag { font-size: 0.65rem; padding: 2px 5px; border-radius: 4px; text-align: center; }
-.status-win { background: #2ecc71; color: black; }
-.status-lose { background: #e74c3c; color: white; }
-
-.btn-xet {
+/* Buttons */
+.btn-sit {
+  width: 100%;
+  padding: 5px;
   background: var(--gold);
   color: black;
   border: none;
-  padding: 5px 8px;
-  border-radius: 6px;
-  font-size: 0.7rem;
+  border-radius: 5px;
   font-weight: bold;
   cursor: pointer;
+  font-size: 0.7rem;
 }
 
-.transaction-sidebar { z-index: 1000; }
+.btn-sit:hover { background: #b8860b; }
 
-/* Xóa scrollbar hoàn toàn trên mọi trình duyệt */
-::-webkit-scrollbar { display: none; }
-* { -ms-overflow-style: none; scrollbar-width: none; }
+/* Sidebar */
+.transaction-sidebar {
+  position: fixed;
+  left: 30px;
+  top: 150px;
+  width: 220px;
+  background: rgba(0,0,0,0.8);
+  border: 1px solid var(--gold);
+  border-radius: 15px;
+  padding: 15px;
+  z-index: 100;
+}
+
+.log-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.log-item {
+  font-size: 0.7rem;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding-bottom: 5px;
+}
+
+.log-item .pos { color: #2ecc71; font-weight: bold; }
+.log-item .neg { color: #e74c3c; font-weight: bold; }
+
+/* Bottom Controls */
+.bottom-controls {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  z-index: 100;
+}
+
+.btn-main {
+  background: var(--gold);
+  color: black;
+  padding: 12px 40px;
+  border: none;
+  border-radius: 30px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+}
+
+.btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+
+.idle-timer {
+  position: fixed;
+  top: 100px;
+  right: 40px;
+  background: rgba(231, 76, 60, 0.9);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  z-index: 100;
+}
+
+/* Score Pill */
+.score-pill {
+  background: rgba(255,255,255,0.1);
+  text-align: center;
+  font-size: 0.6rem;
+  padding: 2px 0;
+  border-radius: 10px;
+  font-weight: bold;
+}
