@@ -137,43 +137,33 @@ body {
   font-size: 0.9rem;
 }
 
-/* NGƯỜI CHƠI (Tọa độ Oval) */
+/* NGƯỜI CHƠI (Tọa độ Oval - Đã tối ưu) */
 .player-box {
   position: absolute;
   width: 140px;
-  background: rgba(0,0,0,0.8);
+  background: rgba(0,0,0,0.85);
   border-radius: 12px;
   padding: 10px;
-  border: 1px solid rgba(212,175,55,0.3);
+  border: 1px solid rgba(212,175,55,0.4);
   transition: all 0.3s ease;
-  z-index: 20;
+  z-index: 50; /* Tăng z-index để không bị che */
   display: flex;
   flex-direction: column;
   gap: 5px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.5);
 }
 
-.player-box.active-turn {
-  border-color: #ff4757;
-  box-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
-  transform: scale(1.05);
-}
-
-.player-box.is-me {
-  background: rgba(212,175,55,0.1);
-  border-color: var(--gold);
-}
-
-/* Tọa độ Oval cho 10 người chơi */
-.seat-0 { left: -5%; top: 20%; }
-.seat-1 { left: -5%; top: 50%; }
-.seat-2 { left: -5%; top: 80%; }
-.seat-3 { left: 15%; top: 95%; }
-.seat-4 { left: 45%; top: 105%; }
-.seat-5 { left: 75%; top: 95%; }
-.seat-6 { left: 95%; top: 80%; }
-.seat-7 { left: 95%; top: 50%; }
-.seat-8 { left: 95%; top: 20%; }
-.seat-9 { left: 45%; top: -15%; }
+/* Tọa độ Oval mới: An toàn hơn, không bị tràn lề */
+.seat-0 { left: 2%; top: 15%; }
+.seat-1 { left: 0%; top: 45%; }
+.seat-2 { left: 2%; top: 75%; }
+.seat-3 { left: 20%; top: 90%; }
+.seat-4 { left: 45%; top: 92%; }
+.seat-5 { left: 70%; top: 90%; }
+.seat-6 { left: 88%; top: 75%; }
+.seat-7 { left: 90%; top: 45%; }
+.seat-8 { left: 88%; top: 15%; }
+.seat-9 { left: 45%; top: -5%; }
 
 /* Hand & Cards */
 .hand {
@@ -220,13 +210,14 @@ body {
 /* Sidebar */
 .transaction-sidebar {
   position: fixed;
-  left: 30px;
-  top: 150px;
-  width: 220px;
-  background: rgba(0,0,0,0.8);
+  left: 20px;
+  bottom: 20px; /* Chuyển xuống góc dưới để không chắn ghế trên */
+  width: 200px;
+  max-height: 250px;
+  background: rgba(0,0,0,0.9);
   border: 1px solid var(--gold);
   border-radius: 15px;
-  padding: 15px;
+  padding: 12px;
   z-index: 100;
 }
 
