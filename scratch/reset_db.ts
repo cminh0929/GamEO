@@ -1,15 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
 
-dotenv.config();
-
+// KHÔNG hardcode key ở đây để tránh lộ thông tin trên GitHub
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!; // Hoặc Service Role nếu cần
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+const supabase = createClient(supabaseUrl, supabaseKey);
 const ROOM_ID = 'gameo-table-1';
 
 async function resetDatabase() {
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('❌ Thiếu biến môi trường NEXT_PUBLIC_SUPABASE_URL hoặc NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    return;
+  }
+
+  console.log('🔄 Đang tiến hành reset database...');
+  
   const emptyState = {
     deck: [],
     dealer: { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 },
@@ -27,7 +32,7 @@ async function resetDatabase() {
     .eq('id', ROOM_ID);
 
   if (error) {
-    console.error('Lỗi khi reset database:', error);
+    console.error('❌ Lỗi:', error.message);
   } else {
     console.log('✅ Đã reset Game Room thành công!');
   }
