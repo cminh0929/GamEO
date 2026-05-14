@@ -276,6 +276,9 @@ export default function GameDashboard() {
 
   const dealerHit = () => {
     if (gameState.dealer.id !== profile.id) return;
+    // Không được rút nếu đã xét bài bất kỳ ai
+    if (gameState.players.some(p => p.isChecked)) return alert("Đã xét bài, không thể rút thêm!");
+    
     const newDeck = [...gameState.deck];
     const newCard = newDeck.pop()!;
     const newHand = [...gameState.dealer.hand, newCard];
@@ -312,7 +315,9 @@ export default function GameDashboard() {
           </div>
           <div className="hand">
             {gameState.dealer.hand.map((card, i) => {
-              const isVisible = gameState.dealer.id === profile?.id || gameState.status === 'ended';
+              // Hiển thị nếu là chủ, hoặc ván đã kết thúc, hoặc Nhà Cái đã bắt đầu XÉT bài
+              const isAnyPlayerChecked = gameState.players.some(p => p.isChecked);
+              const isVisible = gameState.dealer.id === profile?.id || gameState.status === 'ended' || isAnyPlayerChecked;
               return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
             })}
           </div>
