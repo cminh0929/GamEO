@@ -174,13 +174,13 @@ body {
   border-color: var(--gold);
 }
 
-/* Tọa độ Oval mới: An toàn hơn, không bị tràn lề */
+/* Tọa độ Oval mới: Nâng cao các ghế dưới để không bị che */
 .seat-0 { left: 2%; top: 15%; }
 .seat-1 { left: 0%; top: 45%; }
 .seat-2 { left: 2%; top: 75%; }
-.seat-3 { left: 20%; top: 90%; }
-.seat-4 { left: 45%; top: 92%; }
-.seat-5 { left: 70%; top: 90%; }
+.seat-3 { left: 18%; top: 88%; }
+.seat-4 { left: 45%; top: 88%; }
+.seat-5 { left: 72%; top: 88%; }
 .seat-6 { left: 88%; top: 75%; }
 .seat-7 { left: 90%; top: 45%; }
 .seat-8 { left: 88%; top: 15%; }
@@ -337,22 +337,44 @@ body {
 .player-header {
   display: flex;
   align-items: center;
+  justify-content: space-between; /* Đẩy tên và timer sang 2 bên */
   gap: 8px;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  width: 100%;
 }
 
 .player-avatar-img {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--gold);
+  border: 1.5px solid var(--gold);
   background: #222;
+  flex-shrink: 0;
 }
 
 .name {
   font-weight: bold;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  color: white;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+}
+
+.timer {
+  background: #ff4757;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 900;
+  animation: pulse 1s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
