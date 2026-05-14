@@ -283,10 +283,8 @@ export default function GameDashboard() {
     }
     
     const nextState = { ...gameState, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
-    let finalState = nextState;
-    if (isPenalty || isMaxCards) {
-      finalState = getNextTurnState(nextState);
-    }
+    const finalState = (isPenalty || isMaxCards) ? getNextTurnState(nextState) : nextState;
+    
     updateRemoteState(finalState);
   };
 
