@@ -29,4 +29,5 @@ export interface GameState {
   status: GameStatus;
   turnIndex: number; // Index of current player
   turnDeadline?: number; // Timestamp khi hết lượt
+  lastActionAt?: number; // Mốc thời gian hành động cuối cùng
 }
