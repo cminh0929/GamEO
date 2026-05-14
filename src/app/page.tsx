@@ -266,8 +266,14 @@ export default function GameDashboard() {
     const updatedPlayers = [...gameState.players];
     const newHand = [...player.hand, newCard];
     const newScore = calculateScore(newHand);
-    const newStatus = newScore >= 28 ? 'bust' : (newScore > 21 ? 'bust' : (newHand.length === 5 ? 'ngu_linh' : 'playing'));
-    if (newScore >= 28) {
+    
+    // Logic mới: Không tự động Stand khi Quắc (>21) trừ khi chạm mốc Đền (>=28) hoặc đủ 5 lá
+    const isPenalty = newScore >= 28;
+    const isMaxCards = newHand.length === 5;
+    
+    const updatedPlayers = [...gameState.players];
+    
+    if (isPenalty) {
       const otherPlayers = gameState.players.filter(p => p.id !== '' && p.id !== profile.id);
       const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + player.currentBet;
       executeTransaction(player.id, -totalTableBet, 'penalty', `ĐỀN NGUYÊN BÀN (Quắc ${newScore}đ)`);
@@ -275,10 +281,16 @@ export default function GameDashboard() {
       alert(`BẠN BỊ ĐỀN NGUYÊN BÀN! Mất tổng cộng $${totalTableBet.toLocaleString()} cho Nhà Cái.`);
       updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: 'bust', isChecked: true };
     } else {
-      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: newStatus };
+      // Vẫn cho phép rút tiếp nếu chưa đủ 5 lá và chưa tới 28đ
+      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: newScore > 21 ? 'bust' : 'playing' };
     }
+    
     let nextState = { ...gameState, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
-    if (newStatus !== 'playing' || newScore >= 28) nextState = getNextTurnState(nextState);
+    
+    // Chỉ tự động chuyển lượt nếu: Bị Phạt Đền (>=28) hoặc Đã đủ 5 lá (Ngũ Linh hoặc Quắc 5 lá)
+    if (isPenalty || isMaxCards) {
+      nextState = getNextTurnState(nextState);
+    }
     updateRemoteState(nextState);
   };
 
