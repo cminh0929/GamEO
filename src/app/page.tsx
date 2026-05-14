@@ -41,22 +41,35 @@ export default function GameDashboard() {
 
   // --- 1. QUẢN LÝ SESSION & PROFILE ---
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchInitialData(session.user.id);
-    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchInitialData(session.user.id);
+      if (session) {
+        fetchProfile(session.user.id);
+        fetchLogs(session.user.id);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchInitialData = useCallback((userId: string) => {
-    fetchProfile(userId);
-    fetchLogs(userId);
-    subscribeToProfileChanges(userId);
-  }, []);
+  // Lắng nghe thay đổi Profile (Balance, Avatar)
+  useEffect(() => {
+    if (!session?.user.id) return;
+    
+    const channel = supabase.channel(`profile-${session.user.id}-${Date.now()}`)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles', 
+        filter: `id=eq.${session.user.id}` 
+      }, (payload) => {
+        setProfile(payload.new);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user.id]);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
@@ -68,12 +81,6 @@ export default function GameDashboard() {
         setProfile(data);
       }
     }
-  };
-
-  const subscribeToProfileChanges = (userId: string) => {
-    supabase.channel(`profile-${userId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
-        (payload) => setProfile(payload.new)).subscribe();
   };
 
   // --- 2. HỆ THỐNG TÀI CHÍNH ( TRANSACTION LOGS ) ---
@@ -107,7 +114,7 @@ export default function GameDashboard() {
       if (data) setGameState(data.game_state);
     };
     fetchGame();
-    const channel = supabase.channel('room-1').on('postgres_changes',
+    const channel = supabase.channel(`room-1-${Date.now()}`).on('postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'game_rooms', filter: `id=eq.${ROOM_ID}` },
       (payload) => setGameState(payload.new.game_state)
     ).subscribe();
