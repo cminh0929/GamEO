@@ -254,7 +254,7 @@ export default function GameDashboard() {
     const player = updatedPlayers[idx];
     const bet = player.currentBet;
     
-    // Logic Trả thưởng rõ ràng
+    // Logic Trả thưởng mới: Xì Dách x3, Ngũ Linh x2, Xì Bàng x4
     let multiplier = 1;
     const playerSpecial = checkSpecialHands(player);
     const dealerSpecial = checkSpecialHands(gameState.dealer);
@@ -264,10 +264,14 @@ export default function GameDashboard() {
     // Ưu tiên các thế bài đặc biệt
     if (playerSpecial === 'xi_bang' || playerSpecial === 'xi_dach') {
       if (dealerSpecial === playerSpecial) result = 'draw';
-      else result = 'win';
-      if (playerSpecial === 'xi_bang') multiplier = 2;
+      else {
+        result = 'win';
+        if (playerSpecial === 'xi_bang') multiplier = 4;
+        else if (playerSpecial === 'xi_dach') multiplier = 3;
+      }
     } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
       result = 'lose';
+      // Nếu nhà cái có hàng đặc biệt, người chơi mất tiền chuẩn (x1)
     } else if (player.status === 'bust') {
       result = 'lose';
     } else if (playerSpecial === 'ngu_linh') {
