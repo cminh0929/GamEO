@@ -34,7 +34,6 @@ export default function GameDashboard() {
     turnIndex: 0,
   });
 
-  // 1. Quản lý Auth & Profile
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -53,19 +52,28 @@ export default function GameDashboard() {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (data) {
       setProfile(data);
-      if (!data.has_spun) {
+      
+      // Kiểm tra sự kiện vòng quay mỗi ngày
+      const today = new Date().toISOString().split('T')[0];
+      if (data.last_spin_date !== today) {
         setIsBigSpinning(true);
-        runInitialSpinner(userId);
+        runDailySpinner(userId, data.balance);
       }
     }
   };
 
-  const runInitialSpinner = (userId: string) => {
+  const runDailySpinner = (userId: string, currentBalance: number) => {
     setTimeout(async () => {
-      const result = (Math.floor(Math.random() * 5) + 1) * 1000;
+      // Quay thưởng ngẫu nhiên từ 100k đến 500k cho sự kiện hàng ngày
+      const bonus = (Math.floor(Math.random() * 5) + 1) * 100000;
+      const today = new Date().toISOString().split('T')[0];
+      
       const { data } = await supabase
         .from('profiles')
-        .update({ balance: result, has_spun: true })
+        .update({ 
+          balance: currentBalance + bonus, 
+          last_spin_date: today 
+        })
         .eq('id', userId)
         .select()
         .single();
@@ -73,11 +81,11 @@ export default function GameDashboard() {
       if (data) {
         setProfile(data);
         setIsBigSpinning(false);
+        alert(`Chúc mừng! Bạn nhận được quà điểm danh hàng ngày: $${bonus.toLocaleString()}!`);
       }
     }, 3000);
   };
 
-  // 2. Realtime Game State
   useEffect(() => {
     const fetchGame = async () => {
       const { data } = await supabase.from('game_rooms').select('game_state').eq('id', ROOM_ID).single();
@@ -215,7 +223,6 @@ export default function GameDashboard() {
     else if (dealerScore < player.score) result = 'win';
     else result = 'draw';
 
-    // Cập nhật Database Profile của người chơi đó
     const newBalance = result === 'win' ? player.balance + player.currentBet : (result === 'lose' ? player.balance - player.currentBet : player.balance);
     
     await supabase.from('profiles').update({ balance: newBalance }).eq('id', player.id);
@@ -230,9 +237,9 @@ export default function GameDashboard() {
     <main>
       {isBigSpinning && (
         <div className="big-spinner-overlay">
-          <div className="big-spinner-box">$$$</div>
-          <h2 style={{ color: 'var(--gold)' }}>ĐANG QUAY TIỀN KHỞI NGHIỆP...</h2>
-          <p style={{ color: 'white' }}>Chỉ dành cho tài khoản mới!</p>
+          <div className="big-spinner-box">🎁</div>
+          <h2 style={{ color: 'var(--gold)' }}>SỰ KIỆN QUAY THƯỞNG HÀNG NGÀY</h2>
+          <p style={{ color: 'white' }}>Bạn nhận được quà điểm danh hôm nay!</p>
         </div>
       )}
 
@@ -241,7 +248,7 @@ export default function GameDashboard() {
           <h1>XÌ DÁCH CASINO</h1>
           {profile && (
             <div className="balance-tag" style={{ fontSize: '1.2rem', background: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '20px' }}>
-              💰 ${profile.balance}
+              💰 ${profile.balance.toLocaleString()}
             </div>
           )}
         </div>
@@ -272,7 +279,7 @@ export default function GameDashboard() {
           {gameState.players.map((player, idx) => (
             <div key={idx} className={`player-box ${player.id === profile?.id ? 'active' : ''} ${gameState.turnIndex === idx ? 'highlight-turn' : ''}`}>
               <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{player.name}</div>
-              {player.id !== '' && <div className="balance-tag">${player.balance}</div>}
+              {player.id !== '' && <div className="balance-tag">${player.balance.toLocaleString()}</div>}
 
               <div className="hand">
                 {player.hand.length > 0 ? player.hand.map((card, i) => <Card key={i} card={card} index={i} />) : player.id !== '' ? <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>{gameState.status === 'betting' ? 'Đang đặt cược...' : 'Đợi ván sau...'}</div> : null}
@@ -283,7 +290,7 @@ export default function GameDashboard() {
                 (gameState.status !== 'playing' ? <button className="btn-xet" onClick={() => takeRole('player', idx)}>Ngồi đây</button> : <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Trong ván...</div>)
               ) : (
                 <>
-                  {player.currentBet > 0 && <div style={{ fontSize: '0.7rem', color: 'var(--gold)' }}>Cược: ${player.currentBet}</div>}
+                  {player.currentBet > 0 && <div style={{ fontSize: '0.7rem', color: 'var(--gold)' }}>Cược: ${player.currentBet.toLocaleString()}</div>}
                   {player.gameResult && <div className={`status-tag status-${player.gameResult}`}>{player.gameResult}</div>}
                   
                   {player.id === profile?.id && (
@@ -310,9 +317,11 @@ export default function GameDashboard() {
       </div>
 
       <div className="controls">
-        <button className="btn btn-gold" onClick={startNewGame} disabled={gameState.dealer.id !== profile?.id}>
-          {gameState.status === 'ended' ? 'Mở bàn đặt cược' : gameState.status === 'betting' ? 'Chia bài' : 'Bắt đầu mới'}
-        </button>
+        {gameState.dealer.id === profile?.id && (
+          <button className="btn btn-gold" onClick={startNewGame}>
+            {gameState.status === 'ended' ? 'Mở bàn đặt cược' : gameState.status === 'betting' ? 'Chia bài' : 'Bắt đầu mới'}
+          </button>
+        )}
         {profile && <button className="btn-xet" style={{ marginLeft: '10px' }} onClick={leaveRole}>Rời chỗ</button>}
       </div>
     </main>
