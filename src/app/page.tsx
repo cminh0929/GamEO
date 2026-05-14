@@ -72,8 +72,9 @@ export default function GameDashboard() {
 
   const isDealer = gameState.dealer.id === myId;
   const myPlayerIndex = gameState.players.findIndex(p => p.id === myId);
+  const isMyTurn = gameState.turnIndex === myPlayerIndex && gameState.status === 'playing';
 
-  // Logic Game (Giữ nguyên từ bản trước nhưng thêm kiểm tra quyền)
+  // Logic Game (Có kiểm tra lượt chơi)
   const startNewGame = () => {
     if (!isDealer) return alert("Chỉ Nhà Cái mới được bắt đầu ván mới!");
     
@@ -84,26 +85,57 @@ export default function GameDashboard() {
       return { ...p, hand: hand as CardType[], score: calculateScore(hand as CardType[]), status: 'playing' as any, isChecked: false, gameResult: null };
     });
 
-    updateRemoteState({ ...gameState, deck: newDeck, dealer: { ...gameState.dealer, hand: dealerHand as CardType[], score: calculateScore(dealerHand as CardType[]), status: 'playing' }, players: updatedPlayers, status: 'playing' });
+    // Tìm người chơi đầu tiên có mặt để bắt đầu lượt
+    const firstPlayerIndex = updatedPlayers.findIndex(p => p.id !== '');
+
+    updateRemoteState({ 
+      ...gameState, 
+      deck: newDeck, 
+      dealer: { ...gameState.dealer, hand: dealerHand as CardType[], score: calculateScore(dealerHand as CardType[]), status: 'playing' }, 
+      players: updatedPlayers, 
+      status: 'playing',
+      turnIndex: firstPlayerIndex !== -1 ? firstPlayerIndex : 0
+    });
+  };
+
+  const nextTurn = (currentState: GameState) => {
+    let nextIdx = currentState.turnIndex + 1;
+    // Tìm người chơi tiếp theo có mặt (id không trống)
+    while (nextIdx < currentState.players.length && currentState.players[nextIdx].id === '') {
+      nextIdx++;
+    }
+    
+    return {
+      ...currentState,
+      turnIndex: nextIdx // Nếu vượt quá số người chơi, coi như đến lượt Nhà Cái
+    };
   };
 
   const hit = (idx: number) => {
-    if (gameState.players[idx].id !== myId) return; // Chỉ mình mới được rút bài mình
+    if (!isMyTurn || idx !== myPlayerIndex) return; 
+    
     const newDeck = [...gameState.deck];
     const newCard = newDeck.pop()!;
     const updatedPlayers = [...gameState.players];
     const player = updatedPlayers[idx];
     const newHand = [...player.hand, newCard];
     const newScore = calculateScore(newHand);
-    updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: newScore > 21 ? 'bust' : (newHand.length === 5 ? 'ngu_linh' : 'playing') };
-    updateRemoteState({ ...gameState, deck: newDeck, players: updatedPlayers });
+    
+    const newStatus = newScore > 21 ? 'bust' : (newHand.length === 5 ? 'ngu_linh' : 'playing');
+    updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: newStatus };
+    
+    let nextState = { ...gameState, deck: newDeck, players: updatedPlayers };
+    if (newStatus !== 'playing') {
+      nextState = nextTurn(nextState);
+    }
+    updateRemoteState(nextState);
   };
 
   const stand = (idx: number) => {
-    if (gameState.players[idx].id !== myId) return;
+    if (!isMyTurn || idx !== myPlayerIndex) return;
     const updatedPlayers = [...gameState.players];
     updatedPlayers[idx].status = 'stay';
-    updateRemoteState({ ...gameState, players: updatedPlayers });
+    updateRemoteState(nextTurn({ ...gameState, players: updatedPlayers }));
   };
 
   const checkPlayer = (idx: number) => {
@@ -145,8 +177,11 @@ export default function GameDashboard() {
         {/* Players Grid */}
         <div className="players-grid">
           {gameState.players.map((player, idx) => (
-            <div key={player.id} className={`player-box ${player.id === myId ? 'active' : ''}`}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{player.name}</div>
+            <div key={player.id} className={`player-box ${player.id === myId ? 'active' : ''} ${gameState.turnIndex === idx ? 'highlight-turn' : ''}`}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>
+                {player.name} 
+                {gameState.turnIndex === idx && player.id !== '' && ' (ĐANG RÚT...)'}
+              </div>
               <div className="hand">
                 {player.hand.map((card, i) => <Card key={i} card={card} index={i} />)}
               </div>
@@ -156,12 +191,20 @@ export default function GameDashboard() {
                 <>
                   <div className="score-badge" style={{ fontSize: '0.7rem' }}>Điểm: {player.score}</div>
                   {player.gameResult && <div className={`status-tag status-${player.gameResult}`}>{player.gameResult}</div>}
-                  {player.id === myId && player.status === 'playing' && (
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      <button className="btn-xet" onClick={() => hit(idx)}>Rút</button>
-                      <button className="btn-xet" onClick={() => stand(idx)}>Dừng</button>
+                  
+                  {player.id === myId && (
+                    <div style={{ marginTop: '5px' }}>
+                      {isMyTurn ? (
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                          <button className="btn-xet" onClick={() => hit(idx)}>Rút</button>
+                          <button className="btn-xet" onClick={() => stand(idx)}>Dừng</button>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.6rem', color: 'var(--gold)' }}>Đợi lượt...</div>
+                      )}
                     </div>
                   )}
+                  
                   {isDealer && (player.status === 'stay' || player.status === 'bust') && !player.isChecked && (
                     <button className="btn-xet" style={{ background: 'red', color: 'white' }} onClick={() => checkPlayer(idx)}>XÉT</button>
                   )}

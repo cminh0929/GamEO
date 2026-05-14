@@ -104,6 +104,18 @@ h1 {
   background: rgba(0, 0, 0, 0.4);
 }
 
+.player-box.highlight-turn {
+  border: 2px solid var(--gold);
+  animation: pulse-turn 1.5s infinite;
+  background: rgba(212, 175, 55, 0.1);
+}
+
+@keyframes pulse-turn {
+  0% { box-shadow: 0 0 5px var(--gold); }
+  50% { box-shadow: 0 0 20px var(--gold); }
+  100% { box-shadow: 0 0 5px var(--gold); }
+}
+
 /* Smaller Cards for 10 Players */
 .card {
   width: 60px;
