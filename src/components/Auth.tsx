@@ -16,7 +16,6 @@ export function Auth({ onSession }: { onSession: (session: any) => void }) {
     const internalEmail = `${username.trim().toLowerCase()}@gameo.internal`;
 
     if (isSignUp) {
-      // Đăng ký
       const { data, error } = await supabase.auth.signUp({
         email: internalEmail,
         password,
@@ -26,21 +25,17 @@ export function Auth({ onSession }: { onSession: (session: any) => void }) {
       if (error) {
         alert(error.message);
       } else {
-        // Nếu không yêu cầu confirm email, Supabase sẽ trả về session ngay
-        if (data.session) {
-          onSession(data.session);
-        } else {
-          // Nếu vẫn yêu cầu confirm (chưa tắt OFF), thì thử đăng nhập lại
+        if (data.session) onSession(data.session);
+        else {
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ 
             email: internalEmail, 
             password 
           });
-          if (signInError) alert('Đăng ký xong nhưng cần bạn tắt "Confirm Email" trong Supabase Dashboard để vào luôn!');
+          if (signInError) alert('Đăng ký xong nhưng cần bạn tắt "Confirm Email" trong Supabase!');
           else onSession(signInData.session);
         }
       }
     } else {
-      // Đăng nhập
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email: internalEmail, 
         password 
@@ -52,41 +47,217 @@ export function Auth({ onSession }: { onSession: (session: any) => void }) {
   };
 
   return (
-    <div className="auth-container">
+    <div className="auth-wrapper">
+      <div className="auth-overlay"></div>
+      
       <div className="auth-card">
-        <h2 style={{ color: 'var(--gold)', marginBottom: '10px' }}>GAMEO CASINO</h2>
-        <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '30px', fontSize: '0.9rem' }}>
-          {isSignUp ? 'Tạo tài khoản và chơi ngay' : 'Đăng nhập vào bàn chơi'}
-        </p>
+        <div className="auth-header">
+          <div className="logo-icon">👑</div>
+          <h2 className="logo-text">GAMEO CASINO</h2>
+          <div className="auth-subtitle">
+            {isSignUp ? 'KHỞI TẠO TÀI KHOẢN HOÀNG GIA' : 'CHÀO MỪNG TRỞ LẠI SÒNG BÀI'}
+          </div>
+        </div>
         
-        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <input 
-            className="auth-input" 
-            placeholder="Tên đăng nhập" 
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            required 
-          />
-          <input 
-            className="auth-input" 
-            type="password" 
-            placeholder="Mật khẩu" 
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required 
-          />
-          <button className="btn btn-gold" type="submit" disabled={loading} style={{ marginTop: '10px' }}>
-            {loading ? 'Đang kết nối...' : (isSignUp ? 'ĐĂNG KÝ & CHƠI' : 'VÀO CHƠI NGAY')}
+        <form onSubmit={handleAuth} className="auth-form">
+          <div className="input-group">
+            <span className="input-icon">👤</span>
+            <input 
+              className="auth-input" 
+              placeholder="Tên đăng nhập" 
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              required 
+            />
+          </div>
+
+          <div className="input-group">
+            <span className="input-icon">🔒</span>
+            <input 
+              className="auth-input" 
+              type="password" 
+              placeholder="Mật khẩu" 
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required 
+            />
+          </div>
+
+          <button className="btn-auth-submit" type="submit" disabled={loading}>
+            {loading ? (
+              <span className="loader"></span>
+            ) : (
+              isSignUp ? 'ĐĂNG KÝ & NHẬN 10M 💰' : 'VÀO SÒNG BÀI NGAY'
+            )}
           </button>
         </form>
         
-        <p 
-          style={{ marginTop: '25px', fontSize: '0.85rem', cursor: 'pointer', color: 'var(--gold)' }}
-          onClick={() => setIsSignUp(!isSignUp)}
-        >
-          {isSignUp ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký tại đây'}
-        </p>
+        <div className="auth-footer">
+          <p onClick={() => setIsSignUp(!isSignUp)}>
+            {isSignUp ? 'Đã có tài khoản? ' : 'Chưa có tài khoản? '}
+            <span>{isSignUp ? 'ĐĂNG NHẬP' : 'ĐĂNG KÝ TẠI ĐÂY'}</span>
+          </p>
+        </div>
       </div>
+
+      <style jsx>{`
+        .auth-wrapper {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+          z-index: 1000;
+          font-family: 'Inter', sans-serif;
+        }
+
+        .auth-overlay {
+          position: absolute;
+          width: 100%; height: 100%;
+          background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+          opacity: 0.2;
+          pointer-events: none;
+        }
+
+        .auth-card {
+          position: relative;
+          width: 420px;
+          background: rgba(20, 20, 20, 0.7);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(212, 175, 55, 0.3);
+          border-radius: 24px;
+          padding: 40px;
+          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(212, 175, 55, 0.1);
+          animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-header {
+          text-align: center;
+          margin-bottom: 35px;
+        }
+
+        .logo-icon {
+          font-size: 3rem;
+          margin-bottom: 10px;
+          filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.5));
+        }
+
+        .logo-text {
+          font-size: 2.2rem;
+          font-weight: 900;
+          color: #d4af37;
+          letter-spacing: 3px;
+          margin: 0;
+          text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+        }
+
+        .auth-subtitle {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.8rem;
+          margin-top: 8px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .auth-form {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .input-group {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .input-icon {
+          position: absolute;
+          left: 15px;
+          font-size: 1.1rem;
+          opacity: 0.6;
+        }
+
+        .auth-input {
+          width: 100%;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          padding: 14px 14px 14px 45px;
+          color: white;
+          font-size: 1rem;
+          transition: all 0.3s;
+        }
+
+        .auth-input:focus {
+          outline: none;
+          background: rgba(255, 255, 255, 0.1);
+          border-color: #d4af37;
+          box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+        }
+
+        .btn-auth-submit {
+          margin-top: 10px;
+          background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+          color: black;
+          border: none;
+          border-radius: 12px;
+          padding: 16px;
+          font-size: 1.1rem;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.3s;
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-auth-submit:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 15px 30px rgba(212, 175, 55, 0.3);
+          filter: brightness(1.1);
+        }
+
+        .btn-auth-submit:active {
+          transform: translateY(0);
+        }
+
+        .auth-footer {
+          margin-top: 30px;
+          text-align: center;
+          font-size: 0.9rem;
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .auth-footer span {
+          color: #d4af37;
+          font-weight: bold;
+          cursor: pointer;
+          margin-left: 5px;
+        }
+
+        .auth-footer span:hover {
+          text-decoration: underline;
+        }
+
+        .loader {
+          width: 20px;
+          height: 20px;
+          border: 3px solid rgba(0, 0, 0, 0.2);
+          border-top-color: black;
+          border-radius: 50%;
+          display: inline-block;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
