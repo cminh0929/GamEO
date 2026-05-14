@@ -32,6 +32,8 @@ export function useXiDachRoom(
   // Ref always holds the latest gameState — fixes stale closure race condition
   // where concurrent players overwrite each other's state
   const gameStateRef = useRef<GameState>(gameState);
+  // Prevent rapid double-clicks on XÉT from stacking transactions
+  const isCheckingRef = useRef(false);
 
   // Fetch initial state + subscribe to realtime updates
   useEffect(() => {
@@ -194,78 +196,164 @@ export function useXiDachRoom(
     const updatedPlayers = [...gs.players];
     const newHand = [...player.hand, newCard];
     const newScore = Hand.calculateScore(newHand);
-    const isPenalty = newScore >= 28;
+    const isBust = newScore >= 28;
     const isMaxCards = newHand.length === 5;
 
-    if (isPenalty) {
-      const otherPlayers = gs.players.filter((p) => p.id !== '' && p.id !== profile?.id);
-      const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + player.currentBet;
-      executeTransaction(player.id, -totalTableBet, 'penalty', `ĐỀN NGUYÊN BÀN (Quắc ${newScore}đ)`);
-      if (gs.dealer.id) executeTransaction(gs.dealer.id, totalTableBet, 'win', `Nhà Cái thu tiền đền nguyên bàn từ ${player.name}`);
-      alert(`BẠN BẺ ĐỀN NGUYÊN BÀN! Mất tổng cộng $${totalTableBet.toLocaleString()} cho Nhà Cái.`);
-      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: 'bust', isChecked: true };
+    if (isBust) {
+      // Chỉ đánh dấu bust — penalty sẽ tính khi dealer XÉT
+      // Người chơi vẫn có quyền câu giờ và tự bấm Stand
+      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: 'bust' };
+      updateRemoteState({ ...gs, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() });
     } else {
       updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: isMaxCards ? 'stay' : 'playing' };
+      const nextState = { ...gs, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
+      updateRemoteState(isMaxCards ? getNextTurnState(nextState) : nextState);
     }
-
-    const nextState = { ...gs, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
-    const finalState = (isPenalty || isMaxCards) ? getNextTurnState(nextState) : nextState;
-    updateRemoteState(finalState);
-  }, [profile, executeTransaction, getNextTurnState, updateRemoteState]);
+  }, [getNextTurnState, updateRemoteState]);
 
   const stand = useCallback((idx: number) => {
     const gs = gameStateRef.current;
     if (gs.turnIndex !== idx) return;
     const updatedPlayers = [...gs.players];
-    updatedPlayers[idx].status = 'stay';
+    // Bust players stay as 'bust', non-bust players become 'stay'
+    if (updatedPlayers[idx].status !== 'bust') {
+      updatedPlayers[idx].status = 'stay';
+    }
     updateRemoteState(getNextTurnState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() }));
   }, [getNextTurnState, updateRemoteState]);
 
   const checkPlayer = useCallback(async (idx: number) => {
-    const gs = gameStateRef.current;
-    if (gs.dealer.id !== profile?.id) return;
-    const dealerScore = Hand.calculateScore(gs.dealer.hand);
-    if (dealerScore < 15 && gs.dealer.hand.length < 5) {
-      return alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const gs = gameStateRef.current;
+      if (gs.dealer.id !== profile?.id) return;
+
+      const updatedPlayers = [...gs.players];
+      const player = updatedPlayers[idx];
+      const bet = player.currentBet;
+
+      // Bust (quắc >=28) — đền nguyên bàn
+      if (player.status === 'bust') {
+        const otherPlayers = gs.players.filter((p) => p.id !== '' && p.id !== player.id);
+        const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + bet;
+        await executeTransaction(player.id, -totalTableBet, 'penalty', `ĐỀN NGUYÊN BÀN (Quắc ${player.score}đ)`);
+        if (gs.dealer.id) await executeTransaction(gs.dealer.id, totalTableBet, 'win', `Nhà Cái thu tiền đền từ ${player.name}`);
+        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: 'lose' };
+        updateRemoteState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() });
+        return;
+      }
+
+      // Normal check
+      const dealerScore = Hand.calculateScore(gs.dealer.hand);
+      if (dealerScore < 15 && gs.dealer.hand.length < 5) {
+        alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
+        return;
+      }
+
+      let multiplier = 1;
+      const playerSpecial = Hand.checkSpecialHands(player);
+      const dealerSpecial = Hand.checkSpecialHands(gs.dealer);
+
+      let result: 'win' | 'lose' | 'draw' = 'draw';
+      if (playerSpecial === 'xi_bang' || playerSpecial === 'xi_dach') {
+        if (dealerSpecial === playerSpecial) result = 'draw';
+        else { result = 'win'; multiplier = playerSpecial === 'xi_bang' ? 4 : 3; }
+      } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
+        result = 'lose';
+      } else if (player.score > 21) {
+        result = 'lose';
+      } else if (playerSpecial === 'ngu_linh') {
+        if (dealerSpecial === 'ngu_linh') result = 'draw';
+        else { result = 'win'; multiplier = 2; }
+      } else if (dealerScore > 21) {
+        result = 'win';
+      } else if (dealerScore > player.score) {
+        result = 'lose';
+      } else if (dealerScore < player.score) {
+        result = 'win';
+      }
+
+      const finalWinAmount = bet * multiplier;
+      if (result === 'win') {
+        await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${playerSpecial || player.score + 'đ'}) x${multiplier}`);
+        await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
+      } else if (result === 'lose') {
+        await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
+        await executeTransaction(gs.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
+      }
+
+      updatedPlayers[idx] = { ...player, isChecked: true, gameResult: result };
+      updateRemoteState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() });
+    } finally {
+      isCheckingRef.current = false;
     }
+  }, [profile, executeTransaction, updateRemoteState]);
 
-    const updatedPlayers = [...gs.players];
-    const player = updatedPlayers[idx];
-    const bet = player.currentBet;
-    let multiplier = 1;
-    const playerSpecial = Hand.checkSpecialHands(player);
-    const dealerSpecial = Hand.checkSpecialHands(gs.dealer);
+  // Xét tất cả người chơi còn lại cùng lúc (dùng sau khi tất cả đã stand/bust)
+  const checkAllPlayers = useCallback(async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const gs = gameStateRef.current;
+      if (gs.dealer.id !== profile?.id) return;
+      const dealerScore = Hand.calculateScore(gs.dealer.hand);
+      if (dealerScore < 15 && gs.dealer.hand.length < 5) {
+        alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
+        return;
+      }
 
-    let result: 'win' | 'lose' | 'draw' = 'draw';
-    if (playerSpecial === 'xi_bang' || playerSpecial === 'xi_dach') {
-      if (dealerSpecial === playerSpecial) result = 'draw';
-      else { result = 'win'; multiplier = playerSpecial === 'xi_bang' ? 4 : 3; }
-    } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
-      result = 'lose';
-    } else if (player.score > 21) {
-      result = 'lose';
-    } else if (playerSpecial === 'ngu_linh') {
-      if (dealerSpecial === 'ngu_linh') result = 'draw';
-      else { result = 'win'; multiplier = 2; }
-    } else if (dealerScore > 21) {
-      result = 'win';
-    } else if (dealerScore > player.score) {
-      result = 'lose';
-    } else if (dealerScore < player.score) {
-      result = 'win';
+      const updatedPlayers = [...gs.players];
+      for (let idx = 0; idx < updatedPlayers.length; idx++) {
+        const player = updatedPlayers[idx];
+        if (player.id === '' || player.isChecked) continue;
+
+        const bet = player.currentBet;
+
+        if (player.status === 'bust') {
+          const otherPlayers = gs.players.filter((p) => p.id !== '' && p.id !== player.id);
+          const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + bet;
+          await executeTransaction(player.id, -totalTableBet, 'penalty', `ĐỀN NGUYÊN BÀN (Quắc ${player.score}đ)`);
+          if (gs.dealer.id) await executeTransaction(gs.dealer.id, totalTableBet, 'win', `Nhà Cái thu tiền đền từ ${player.name}`);
+          updatedPlayers[idx] = { ...player, isChecked: true, gameResult: 'lose' };
+          continue;
+        }
+
+        let multiplier = 1;
+        const playerSpecial = Hand.checkSpecialHands(player);
+        const dealerSpecial = Hand.checkSpecialHands(gs.dealer);
+        let result: 'win' | 'lose' | 'draw' = 'draw';
+        if (playerSpecial === 'xi_bang' || playerSpecial === 'xi_dach') {
+          if (dealerSpecial === playerSpecial) result = 'draw';
+          else { result = 'win'; multiplier = playerSpecial === 'xi_bang' ? 4 : 3; }
+        } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
+          result = 'lose';
+        } else if (player.score > 21) {
+          result = 'lose';
+        } else if (playerSpecial === 'ngu_linh') {
+          if (dealerSpecial === 'ngu_linh') result = 'draw';
+          else { result = 'win'; multiplier = 2; }
+        } else if (dealerScore > 21) {
+          result = 'win';
+        } else if (dealerScore > player.score) {
+          result = 'lose';
+        } else if (dealerScore < player.score) {
+          result = 'win';
+        }
+        const finalWinAmount = bet * multiplier;
+        if (result === 'win') {
+          await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${playerSpecial || player.score + 'đ'}) x${multiplier}`);
+          await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
+        } else if (result === 'lose') {
+          await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
+          await executeTransaction(gs.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
+        }
+        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: result };
+      }
+      updateRemoteState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() });
+    } finally {
+      isCheckingRef.current = false;
     }
-
-    const finalWinAmount = bet * multiplier;
-    if (result === 'win') {
-      await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${playerSpecial || player.score + 'đ'}) x${multiplier}`);
-      await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
-    } else if (result === 'lose') {
-      await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
-      await executeTransaction(gs.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
-    }
-
-    updatedPlayers[idx] = { ...player, isChecked: true, gameResult: result };
-    updateRemoteState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() });
   }, [profile, executeTransaction, updateRemoteState]);
 
   const dealerHit = useCallback(() => {
@@ -298,6 +386,7 @@ export function useXiDachRoom(
       hit,
       stand,
       checkPlayer,
+      checkAllPlayers,
       dealerHit,
       resetTableToEmpty,
     },

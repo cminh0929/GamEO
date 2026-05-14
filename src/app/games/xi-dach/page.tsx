@@ -60,6 +60,14 @@ function XiDachGame() {
     isBlocked,
   });
 
+  // Show "XÉT TẤT CẢ" when all seated players have finished their turns
+  const isDealer = gameState.dealer.id === profile?.id;
+  const seatedPlayers = gameState.players.filter((p) => p.id !== '');
+  const allPlayersDone = seatedPlayers.length > 0 &&
+    seatedPlayers.every((p) => p.status === 'stay' || p.status === 'bust') &&
+    seatedPlayers.some((p) => !p.isChecked);
+  const showCheckAll = isDealer && gameState.status === 'playing' && gameState.turnIndex === -1 && allPlayersDone;
+
   // ── beforeunload: auto-leave when closing tab mid-game ──────────────────
   const actionsRef = useRef(actions);
   const profileRef = useRef(profile);
@@ -156,7 +164,12 @@ function XiDachGame() {
 
       {/* Bottom controls */}
       <div className="bottom-controls">
-        {gameState.dealer.id === profile?.id && (
+        {showCheckAll && (
+          <button className="btn-main" style={{ background: 'linear-gradient(135deg,#e74c3c,#c0392b)' }} onClick={actions.checkAllPlayers}>
+            ⚖️ XÉT TẤT CẢ
+          </button>
+        )}
+        {gameState.dealer.id === profile?.id && !showCheckAll && (
           <button className="btn-main" onClick={actions.startNewGame}>
             {gameState.status === 'ended'
               ? 'BẮT ĐẦU VÁN MỚI'
