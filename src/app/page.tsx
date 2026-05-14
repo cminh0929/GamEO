@@ -88,10 +88,10 @@ export default function GameDashboard() {
     try {
       const { data: currentProfile, error: fetchError } = await supabase.from('profiles').select('balance').eq('id', userId).single();
       if (fetchError || !currentProfile) throw new Error("Không tìm thấy profile");
-      
+
       const newBalance = (currentProfile.balance || 0) + amount;
       const { error: updateError } = await supabase.from('profiles').update({ balance: newBalance }).eq('id', userId);
-      
+
       if (!updateError) {
         await supabase.from('transaction_logs').insert({ user_id: userId, amount, type, description });
         fetchLogs(userId);
@@ -498,20 +498,20 @@ export default function GameDashboard() {
               ) : (
                 <>
                   <div className="bet-display">${player.currentBet.toLocaleString()}</div>
-                      {player.id === profile?.id && gameState.status === 'betting' && (
-                        <input 
-                          type="number" 
-                          className="bet-input" 
-                          placeholder="Cược..." 
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              placeBet(idx, parseInt((e.target as HTMLInputElement).value));
-                              (e.target as HTMLInputElement).blur();
-                            }
-                          }}
-                          onBlur={(e) => placeBet(idx, parseInt(e.target.value))} 
-                        />
-                      )}
+                  {player.id === profile?.id && gameState.status === 'betting' && (
+                    <input
+                      type="number"
+                      className="bet-input"
+                      placeholder="Cược..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          placeBet(idx, parseInt((e.target as HTMLInputElement).value));
+                          (e.target as HTMLInputElement).blur();
+                        }
+                      }}
+                      onBlur={(e) => placeBet(idx, parseInt(e.target.value))}
+                    />
+                  )}
                   {player.id === profile?.id && gameState.turnIndex === idx && (
                     <div className="action-row">
                       <button className="btn-mini hit" onClick={() => hit(idx)}>Rút</button>
@@ -519,11 +519,11 @@ export default function GameDashboard() {
                     </div>
                   )}
                   {gameState.dealer.id === profile?.id && player.hand.length > 0 && !player.isChecked && (
-                    <button 
-                      className="btn-mini check" 
-                      onClick={() => checkPlayer(idx)} 
+                    <button
+                      className="btn-mini check"
+                      onClick={() => checkPlayer(idx)}
                       disabled={
-                        (calculateScore(gameState.dealer.hand) < 15 && gameState.dealer.hand.length < 5) || 
+                        (calculateScore(gameState.dealer.hand) < 15 && gameState.dealer.hand.length < 5) ||
                         player.status === 'playing'
                       }
                     >
