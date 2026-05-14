@@ -19,7 +19,6 @@ export interface Player {
   gameResult?: 'win' | 'lose' | 'draw' | null;
   balance: number;
   currentBet: number;
-  isSpinning?: boolean;
   avatarUrl?: string;
 }
 

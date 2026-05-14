@@ -22,7 +22,7 @@ export const shuffle = (deck: CardType[]): CardType[] => {
   return newDeck;
 };
 
-export const getCardValue = (rank: Rank): number => {
+const getCardValue = (rank: Rank): number => {
   if (['J', 'Q', 'K'].includes(rank)) return 10;
   if (rank === 'A') return 11;
   return parseInt(rank);

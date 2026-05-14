@@ -25,7 +25,6 @@ export default function GameDashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [idleTimeLeft, setIdleTimeLeft] = useState<number>(60);
-  const [lastKeyPressed, setLastKeyPressed] = useState<string>('');
   const [logs, setLogs] = useState<TransactionLog[]>([]);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
