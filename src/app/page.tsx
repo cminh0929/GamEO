@@ -225,10 +225,12 @@ export default function GameDashboard() {
 
   const hit = (idx: number) => {
     if (gameState.turnIndex !== idx) return;
+    const player = gameState.players[idx];
+    if (player.hand.length >= 5) return alert("Đã đạt giới hạn tối đa 5 lá bài!");
+
     const newDeck = [...gameState.deck];
     const newCard = newDeck.pop()!;
     const updatedPlayers = [...gameState.players];
-    const player = updatedPlayers[idx];
     const newHand = [...player.hand, newCard];
     const newScore = calculateScore(newHand);
     const newStatus = newScore > 21 ? 'bust' : (newHand.length === 5 ? 'ngu_linh' : 'playing');
@@ -419,8 +421,18 @@ export default function GameDashboard() {
                     </div>
                   )}
                   {gameState.dealer.id === profile?.id && player.hand.length > 0 && !player.isChecked && (
-                    <button className="btn-xet" style={{ background: calculateScore(gameState.dealer.hand) >= 15 ? '#ff4757' : '#555', color: 'white', fontWeight: 'bold' }} onClick={() => checkPlayer(idx)} disabled={calculateScore(gameState.dealer.hand) < 15}>
-                      XÉT {calculateScore(gameState.dealer.hand) < 15 && '(Cần 15đ)'}
+                    <button 
+                      className="btn-xet" 
+                      style={{ 
+                        background: (calculateScore(gameState.dealer.hand) >= 15 && player.status !== 'playing') ? '#ff4757' : '#555', 
+                        color: 'white', 
+                        fontWeight: 'bold',
+                        cursor: (calculateScore(gameState.dealer.hand) >= 15 && player.status !== 'playing') ? 'pointer' : 'not-allowed'
+                      }} 
+                      onClick={() => checkPlayer(idx)} 
+                      disabled={calculateScore(gameState.dealer.hand) < 15 || player.status === 'playing'}
+                    >
+                      XÉT {player.status === 'playing' ? '(Đang chờ...)' : (calculateScore(gameState.dealer.hand) < 15 ? '(Cần 15đ)' : '')}
                     </button>
                   )}
                 </>
