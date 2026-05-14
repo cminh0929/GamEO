@@ -233,10 +233,26 @@ export default function GameDashboard() {
     const updatedPlayers = [...gameState.players];
     const newHand = [...player.hand, newCard];
     const newScore = calculateScore(newHand);
-    const newStatus = newScore > 21 ? 'bust' : (newHand.length === 5 ? 'ngu_linh' : 'playing');
-    updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: newStatus };
+    const newStatus = newScore >= 28 ? 'bust' : (newScore > 21 ? 'bust' : (newHand.length === 5 ? 'ngu_linh' : 'playing'));
+    
+    // Kiểm tra luật Đền nguyên bàn (>= 28 điểm)
+    if (newScore >= 28) {
+      const otherPlayers = gameState.players.filter(p => p.id !== '' && p.id !== profile.id);
+      const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + player.currentBet;
+      
+      await executeTransaction(player.id, -totalTableBet, 'penalty', `ĐỀN NGUYÊN BÀN (Quắc ${newScore}đ)`);
+      if (gameState.dealer.id) {
+        await executeTransaction(gameState.dealer.id, totalTableBet, 'win', `Nhà Cái thu tiền đền nguyên bàn từ ${player.name}`);
+      }
+      alert(`BẠN BỊ ĐỀN NGUYÊN BÀN! Mất tổng cộng $${totalTableBet.toLocaleString()} cho Nhà Cái.`);
+      
+      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: 'bust', isChecked: true };
+    } else {
+      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: newStatus };
+    }
+
     let nextState = { ...gameState, deck: newDeck, players: updatedPlayers };
-    if (newStatus !== 'playing') nextState = getNextTurnState(nextState);
+    if (newStatus !== 'playing' || newScore >= 28) nextState = getNextTurnState(nextState);
     updateRemoteState(nextState);
   };
 
