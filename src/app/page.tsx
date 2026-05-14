@@ -419,9 +419,15 @@ export default function GameDashboard() {
             !(gameState.players.some(p => p.id === profile?.id) || gameState.dealer.id === profile?.id) && 
             <button className="btn btn-gold" style={{ padding: '0.5rem 1.5rem', fontSize: '0.9rem' }} onClick={() => takeRole('dealer')}>Làm Cái 👑</button>
           ) : gameState.dealer.id === profile?.id && (
-            <div className="controls" style={{ marginTop: '10px' }}>
+            <div className="controls" style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
               {gameState.status === 'playing' && gameState.turnIndex === -1 && <button className="btn-xet" onClick={dealerHit}>Rút bài Cái</button>}
-              <button className="btn-xet" style={{ marginLeft: '10px' }} onClick={resetTableToEmpty}>Kết thúc ván & Reset bàn</button>
+              <button 
+                className="btn-xet" 
+                style={{ background: '#e67e22', color: 'white', border: '1px solid #d35400' }} 
+                onClick={resetTableToEmpty}
+              >
+                🔄 Làm mới toàn bàn (Kick hết)
+              </button>
             </div>
           )}
         </div>
