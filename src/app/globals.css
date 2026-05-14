@@ -152,31 +152,70 @@ h1 {
   font-size: 1.5rem;
 }
 
-/* Money Spinner */
-.spinner-overlay {
-  position: absolute;
+/* Auth UI */
+.auth-container {
+  position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.8);
+  background: radial-gradient(circle at center, #1a472a 0%, #0a2412 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.auth-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  padding: 40px;
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.auth-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 15px;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.auth-input:focus {
+  border-color: var(--gold);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Big Spinner for New Account */
+.big-spinner-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.95);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 100;
-  border-radius: 15px;
+  z-index: 2000;
 }
 
-.spinner-box {
-  width: 100px;
-  height: 100px;
-  border: 4px solid var(--gold);
+.big-spinner-box {
+  width: 200px;
+  height: 200px;
+  border: 10px solid var(--gold);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 1.2rem;
+  font-size: 3rem;
   color: var(--gold);
   animation: spin 0.1s linear infinite;
+  box-shadow: 0 0 50px var(--gold);
+  margin-bottom: 30px;
 }
 
 @keyframes spin {
@@ -201,8 +240,6 @@ h1 {
   color: #2ecc71;
   font-weight: bold;
 }
-
-/* Action Tags */
 .status-tag {
   font-size: 0.7rem;
   padding: 2px 8px;
