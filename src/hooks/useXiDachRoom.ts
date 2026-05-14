@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameRoomService } from '../lib/services/GameRoomService';
 import { Deck } from '../lib/game/Deck';
 import { Hand } from '../lib/game/Hand';
@@ -29,19 +29,26 @@ export function useXiDachRoom(
   executeTransaction: ExecuteTransaction,
 ) {
   const [gameState, setGameState] = useState<GameState>(createEmptyState());
+  // Ref always holds the latest gameState — fixes stale closure race condition
+  // where concurrent players overwrite each other's state
+  const gameStateRef = useRef<GameState>(gameState);
 
   // Fetch initial state + subscribe to realtime updates
   useEffect(() => {
     GameRoomService.fetchGameState(ROOM_ID).then((state) => {
-      if (state) setGameState(state);
+      if (state) { setGameState(state); gameStateRef.current = state; }
     });
 
-    const channel = GameRoomService.subscribeToRoom(ROOM_ID, setGameState);
+    const channel = GameRoomService.subscribeToRoom(ROOM_ID, (state) => {
+      setGameState(state);
+      gameStateRef.current = state;
+    });
     return () => { supabase.removeChannel(channel); };
   }, []);
 
   const updateRemoteState = useCallback(async (newState: GameState) => {
     setGameState(newState);
+    gameStateRef.current = newState;
     await GameRoomService.updateGameState(ROOM_ID, newState);
   }, []);
 
@@ -57,12 +64,13 @@ export function useXiDachRoom(
   // --- Game actions ---
   const takeRole = useCallback((type: 'dealer' | 'player', index?: number) => {
     if (!profile) return;
+    const gs = gameStateRef.current;
     const alreadySeated =
-      gameState.players.some((p) => p.id === profile.id) ||
-      gameState.dealer.id === profile.id;
+      gs.players.some((p) => p.id === profile.id) ||
+      gs.dealer.id === profile.id;
     if (alreadySeated) return alert('Bạn đã có vị trí rồi!');
 
-    const newState = { ...gameState, lastActionAt: Date.now() };
+    const newState = { ...gs, lastActionAt: Date.now() };
     if (type === 'dealer') {
       newState.dealer = {
         ...newState.dealer,
@@ -77,26 +85,28 @@ export function useXiDachRoom(
       };
     }
     updateRemoteState(newState);
-  }, [profile, gameState, updateRemoteState]);
+  }, [profile, updateRemoteState]);
 
   const kickPlayer = useCallback((index: number) => {
-    if (gameState.dealer.id !== profile?.id) return;
-    if (gameState.status === 'playing') return alert('Không thể kích người chơi khi đang trong ván bài!');
-    const newState = { ...gameState, lastActionAt: Date.now() };
+    const gs = gameStateRef.current;
+    if (gs.dealer.id !== profile?.id) return;
+    if (gs.status === 'playing') return alert('Không thể kích người chơi khi đang trong ván bài!');
+    const newState = { ...gs, lastActionAt: Date.now() };
     newState.players[index] = {
       id: '', name: `Vị trí ${index + 1}`, hand: [], score: 0, status: 'playing',
       isChecked: false, gameResult: null, balance: 0, currentBet: 0,
     };
     updateRemoteState(newState);
-  }, [profile, gameState, updateRemoteState]);
+  }, [profile, updateRemoteState]);
 
   const leaveRole = useCallback(async () => {
     if (!profile) return;
-    const newState = { ...gameState, lastActionAt: Date.now() };
-    const isGameActive = gameState.status === 'playing';
+    const gs = gameStateRef.current;
+    const newState = { ...gs, lastActionAt: Date.now() };
+    const isGameActive = gs.status === 'playing';
 
     if (newState.dealer.id === profile.id) {
-      const isRoomActive = gameState.status === 'playing' || gameState.status === 'betting';
+      const isRoomActive = gs.status === 'playing' || gs.status === 'betting';
       if (isRoomActive) {
         newState.status = 'ended';
         newState.players.forEach((p) => {
@@ -121,7 +131,7 @@ export function useXiDachRoom(
           id: '', name: `Vị trí ${pIdx + 1}`, hand: [], score: 0, status: 'playing',
           isChecked: false, gameResult: null, balance: 0, currentBet: 0,
         };
-        if (gameState.turnIndex === pIdx) {
+        if (gs.turnIndex === pIdx) {
           const next = getNextTurnState(newState);
           newState.turnIndex = next.turnIndex;
           newState.turnDeadline = next.turnDeadline;
@@ -129,33 +139,34 @@ export function useXiDachRoom(
       }
     }
     updateRemoteState(newState);
-  }, [profile, gameState, executeTransaction, getNextTurnState, updateRemoteState]);
+  }, [profile, executeTransaction, getNextTurnState, updateRemoteState]);
 
   const placeBet = useCallback(async (index: number, amount: number) => {
     if (!profile || amount <= 0) return;
     if (amount > profile.balance) return alert('Không đủ tiền!');
-    const newState = { ...gameState, lastActionAt: Date.now() };
+    const newState = { ...gameStateRef.current, lastActionAt: Date.now() };
     newState.players[index].currentBet = amount;
     updateRemoteState(newState);
-  }, [profile, gameState, updateRemoteState]);
+  }, [profile, updateRemoteState]);
 
   const startNewGame = useCallback(() => {
-    if (gameState.dealer.id !== profile?.id) return alert('Chỉ Nhà Cái mới được bắt đầu!');
+    const gs = gameStateRef.current;
+    if (gs.dealer.id !== profile?.id) return alert('Chỉ Nhà Cái mới được bắt đầu!');
 
-    if (gameState.status !== 'betting') {
-      const newState = { ...gameState, status: 'betting' as GameStatus, lastActionAt: Date.now() };
+    if (gs.status !== 'betting') {
+      const newState = { ...gs, status: 'betting' as GameStatus, lastActionAt: Date.now() };
       newState.players.forEach((p) => { p.currentBet = 0; p.gameResult = null; p.isChecked = false; p.hand = []; p.status = 'playing'; });
       updateRemoteState(newState);
       return;
     }
 
-    const activePlayers = gameState.players.filter((p) => p.id !== '');
+    const activePlayers = gs.players.filter((p) => p.id !== '');
     if (activePlayers.length === 0) return alert('Cần ít nhất 1 người chơi để bắt đầu!');
     if (activePlayers.some((p) => p.currentBet <= 0)) return alert('Còn người chưa cược!');
 
     const newDeck = Deck.createShuffled();
     const dealerHand = [newDeck.pop()!, newDeck.pop()!];
-    const updatedPlayers = gameState.players.map((p) => {
+    const updatedPlayers = gs.players.map((p) => {
       if (p.id === '') return p;
       const hand = [newDeck.pop()!, newDeck.pop()!];
       return { ...p, hand: hand as CardType[], score: Hand.calculateScore(hand as CardType[]), status: 'playing' as const, isChecked: false };
@@ -163,64 +174,67 @@ export function useXiDachRoom(
 
     const firstPlayerIndex = updatedPlayers.findIndex((p) => p.id !== '');
     updateRemoteState({
-      ...gameState, deck: newDeck,
-      dealer: { ...gameState.dealer, hand: dealerHand as CardType[], score: Hand.calculateScore(dealerHand as CardType[]), status: 'playing' },
+      ...gs, deck: newDeck,
+      dealer: { ...gs.dealer, hand: dealerHand as CardType[], score: Hand.calculateScore(dealerHand as CardType[]), status: 'playing' },
       players: updatedPlayers, status: 'playing',
       turnIndex: firstPlayerIndex !== -1 ? firstPlayerIndex : 0,
       turnDeadline: Date.now() + 30000,
       lastActionAt: Date.now(),
     });
-  }, [profile, gameState, updateRemoteState]);
+  }, [profile, updateRemoteState]);
 
   const hit = useCallback((idx: number) => {
-    if (gameState.turnIndex !== idx) return;
-    const player = gameState.players[idx];
+    const gs = gameStateRef.current;
+    if (gs.turnIndex !== idx) return;
+    const player = gs.players[idx];
     if (player.hand.length >= 5) return alert('Đã đạt giới hạn tối đa 5 lá bài!');
 
-    const newDeck = [...gameState.deck];
+    const newDeck = [...gs.deck];
     const newCard = newDeck.pop()!;
-    const updatedPlayers = [...gameState.players];
+    const updatedPlayers = [...gs.players];
     const newHand = [...player.hand, newCard];
     const newScore = Hand.calculateScore(newHand);
     const isPenalty = newScore >= 28;
     const isMaxCards = newHand.length === 5;
 
     if (isPenalty) {
-      const otherPlayers = gameState.players.filter((p) => p.id !== '' && p.id !== profile?.id);
+      const otherPlayers = gs.players.filter((p) => p.id !== '' && p.id !== profile?.id);
       const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + player.currentBet;
       executeTransaction(player.id, -totalTableBet, 'penalty', `ĐỀN NGUYÊN BÀN (Quắc ${newScore}đ)`);
-      if (gameState.dealer.id) executeTransaction(gameState.dealer.id, totalTableBet, 'win', `Nhà Cái thu tiền đền nguyên bàn từ ${player.name}`);
-      alert(`BẠN BỊ ĐỀN NGUYÊN BÀN! Mất tổng cộng $${totalTableBet.toLocaleString()} cho Nhà Cái.`);
+      if (gs.dealer.id) executeTransaction(gs.dealer.id, totalTableBet, 'win', `Nhà Cái thu tiền đền nguyên bàn từ ${player.name}`);
+      alert(`BẠN BẺ ĐỀN NGUYÊN BÀN! Mất tổng cộng $${totalTableBet.toLocaleString()} cho Nhà Cái.`);
       updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: 'bust', isChecked: true };
     } else {
       updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: isMaxCards ? 'stay' : 'playing' };
     }
 
-    const nextState = { ...gameState, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
+    const nextState = { ...gs, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
     const finalState = (isPenalty || isMaxCards) ? getNextTurnState(nextState) : nextState;
     updateRemoteState(finalState);
-  }, [gameState, profile, executeTransaction, getNextTurnState, updateRemoteState]);
+  }, [profile, executeTransaction, getNextTurnState, updateRemoteState]);
 
   const stand = useCallback((idx: number) => {
-    if (gameState.turnIndex !== idx) return;
-    const updatedPlayers = [...gameState.players];
+    const gs = gameStateRef.current;
+    if (gs.turnIndex !== idx) return;
+    const updatedPlayers = [...gs.players];
     updatedPlayers[idx].status = 'stay';
-    updateRemoteState(getNextTurnState({ ...gameState, players: updatedPlayers, lastActionAt: Date.now() }));
-  }, [gameState, getNextTurnState, updateRemoteState]);
+    updateRemoteState(getNextTurnState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() }));
+  }, [getNextTurnState, updateRemoteState]);
 
   const checkPlayer = useCallback(async (idx: number) => {
-    if (gameState.dealer.id !== profile?.id) return;
-    const dealerScore = Hand.calculateScore(gameState.dealer.hand);
-    if (dealerScore < 15 && gameState.dealer.hand.length < 5) {
+    const gs = gameStateRef.current;
+    if (gs.dealer.id !== profile?.id) return;
+    const dealerScore = Hand.calculateScore(gs.dealer.hand);
+    if (dealerScore < 15 && gs.dealer.hand.length < 5) {
       return alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
     }
 
-    const updatedPlayers = [...gameState.players];
+    const updatedPlayers = [...gs.players];
     const player = updatedPlayers[idx];
     const bet = player.currentBet;
     let multiplier = 1;
     const playerSpecial = Hand.checkSpecialHands(player);
-    const dealerSpecial = Hand.checkSpecialHands(gameState.dealer);
+    const dealerSpecial = Hand.checkSpecialHands(gs.dealer);
 
     let result: 'win' | 'lose' | 'draw' = 'draw';
     if (playerSpecial === 'xi_bang' || playerSpecial === 'xi_dach') {
@@ -244,29 +258,30 @@ export function useXiDachRoom(
     const finalWinAmount = bet * multiplier;
     if (result === 'win') {
       await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${playerSpecial || player.score + 'đ'}) x${multiplier}`);
-      await executeTransaction(gameState.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
+      await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
     } else if (result === 'lose') {
       await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
-      await executeTransaction(gameState.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
+      await executeTransaction(gs.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
     }
 
     updatedPlayers[idx] = { ...player, isChecked: true, gameResult: result };
-    updateRemoteState({ ...gameState, players: updatedPlayers, lastActionAt: Date.now() });
-  }, [gameState, profile, executeTransaction, updateRemoteState]);
+    updateRemoteState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() });
+  }, [profile, executeTransaction, updateRemoteState]);
 
   const dealerHit = useCallback(() => {
-    if (gameState.dealer.id !== profile?.id) return;
-    if (gameState.dealer.hand.length >= 5) return alert('Nhà Cái đã đạt giới hạn 5 lá bài!');
-    if (gameState.players.some((p) => p.id !== '' && p.isChecked)) return alert('Đã xét bài, không thể rút thêm!');
-    const newDeck = [...gameState.deck];
+    const gs = gameStateRef.current;
+    if (gs.dealer.id !== profile?.id) return;
+    if (gs.dealer.hand.length >= 5) return alert('Nhà Cái đã đạt giới hạn 5 lá bài!');
+    if (gs.players.some((p) => p.id !== '' && p.isChecked)) return alert('Đã xét bài, không thể rút thêm!');
+    const newDeck = [...gs.deck];
     const newCard = newDeck.pop()!;
-    const newHand = [...gameState.dealer.hand, newCard];
+    const newHand = [...gs.dealer.hand, newCard];
     updateRemoteState({
-      ...gameState, deck: newDeck,
-      dealer: { ...gameState.dealer, hand: newHand, score: Hand.calculateScore(newHand) },
+      ...gs, deck: newDeck,
+      dealer: { ...gs.dealer, hand: newHand, score: Hand.calculateScore(newHand) },
       lastActionAt: Date.now(),
     });
-  }, [gameState, profile, updateRemoteState]);
+  }, [profile, updateRemoteState]);
 
   const resetTableToEmpty = useCallback(async () => {
     await updateRemoteState(createEmptyState());
