@@ -428,9 +428,9 @@ export default function GameDashboard() {
 
         <div className="players-grid">
           {gameState.players.map((player, idx) => (
-            <div key={idx} className={`player-box ${player.id === profile?.id ? 'active' : ''} ${gameState.turnIndex === idx ? 'highlight-turn' : ''}`}>
+            <div key={idx} className={`player-box seat-${idx} ${player.id === profile?.id ? 'active' : ''} ${gameState.turnIndex === idx ? 'highlight-turn' : ''}`}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: player.id ? 'var(--gold)' : '#555' }}>{player.name}</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: player.id ? 'var(--gold)' : '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</div>
                 {gameState.turnIndex === idx && <div style={{ color: '#ff4757', fontWeight: 'bold' }}>{timeLeft}s</div>}
               </div>
               {player.id !== '' && <div className="balance-tag" style={{ color: '#2ecc71', fontSize: '0.75rem' }}>${player.balance.toLocaleString()}</div>}
@@ -438,7 +438,7 @@ export default function GameDashboard() {
                 {player.hand.length > 0 ? player.hand.map((card, i) => {
                   const isVisible = player.id === profile?.id || player.isChecked || gameState.status === 'ended';
                   return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
-                }) : player.id !== '' ? <div style={{ fontSize: '0.65rem', opacity: 0.5, textAlign: 'center', width: '100%' }}>{gameState.status === 'betting' ? '⌛ Chờ cược...' : '💤 Chờ ván sau...'}</div> : null}
+                }) : player.id !== '' ? <div style={{ fontSize: '0.65rem', opacity: 0.5, textAlign: 'center', width: '100%' }}>{gameState.status === 'betting' ? '⌛ Cược...' : '💤 Chờ ván...'}</div> : null}
               </div>
               {player.hand.length > 0 && (player.id === profile?.id || player.isChecked || gameState.status === 'ended') && (
                 <div className="score-pill" style={{ background: 'rgba(255,255,255,0.1)', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '0.65rem', marginTop: '5px', border: '1px solid rgba(255,255,255,0.2)', display: 'inline-block' }}>

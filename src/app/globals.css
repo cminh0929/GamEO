@@ -1,366 +1,183 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&display=swap');
-
 :root {
-  --table-green: #0a3d22;
-  --table-green-light: #165a3b;
   --gold: #d4af37;
-  --gold-light: #f1d592;
-  --card-white: #fefefe;
-  --card-red: #e63946;
-  --card-black: #1d3557;
-  --glass: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.2);
-  --background: var(--table-green);
-  --foreground: #ffffff;
+  --dark-green: #0a2e1f;
+  --felt-green: #1a4a35;
+  --table-border: #4a3721;
 }
 
 * {
   box-sizing: border-box;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
 }
 
-html, body {
-  height: 100%;
-  overflow: hidden;
-  font-family: 'Inter', sans-serif;
-  background: radial-gradient(circle at center, var(--table-green-light) 0%, var(--table-green) 100%);
-  color: var(--foreground);
+body {
+  background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+  color: white;
+  height: 100vh;
+  overflow: hidden; /* Bỏ thanh scroll */
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 main {
-  display: flex;
-  flex-direction: column;
+  width: 100vw;
   height: 100vh;
-  padding: 2rem;
-  align-items: center;
-  justify-content: space-between;
-}
-
-h1 {
-  font-family: 'Playfair Display', serif;
-  font-size: 3rem;
-  color: var(--gold);
-  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-  margin-bottom: 1rem;
-}
-
-/* Casino Table Layout */
-.table-area {
-  flex: 1;
-  width: 100%;
-  max-width: 1200px;
-  background: var(--glass);
-  backdrop-filter: blur(10px);
-  border: 2px solid var(--gold);
-  border-radius: 50px;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5), 0 20px 50px rgba(0, 0, 0, 0.3);
   position: relative;
-  overflow-y: auto;
-}
-
-/* Dealer Area */
-.dealer-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid var(--glass-border);
+  padding: 20px;
 }
 
-/* Players Grid */
+/* Bàn Casino */
+.table-area {
+  position: relative;
+  width: 85vw;
+  height: 70vh;
+  margin-top: 50px;
+  background: var(--felt-green);
+  border: 15px solid var(--table-border);
+  border-radius: 500px; /* Tạo hình Oval */
+  box-shadow: 
+    inset 0 0 100px rgba(0,0,0,0.5),
+    0 20px 50px rgba(0,0,0,0.8),
+    0 0 20px var(--gold);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Nhà cái ở giữa phía trên */
+.dealer-section {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0,0,0,0.8);
+  padding: 15px 30px;
+  border-radius: 20px;
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 20px var(--gold);
+}
+
+/* Vị trí người chơi xung quanh */
 .players-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 2rem;
+  position: absolute;
   width: 100%;
-  margin-top: 2rem;
+  height: 100%;
+  pointer-events: none;
 }
 
 .player-box {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: absolute;
+  width: 160px;
+  background: rgba(0,0,0,0.85);
+  border: 2px solid rgba(255,255,255,0.1);
   border-radius: 15px;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  min-height: 180px;
+  padding: 10px;
+  pointer-events: auto;
   transition: all 0.3s ease;
-  position: relative;
+  z-index: 5;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
 }
 
 .player-box.active {
-  border: 1px solid #2ecc71;
-  box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
-}
-
-.player-box.checked {
-  opacity: 0.7;
-  background: rgba(0, 0, 0, 0.4);
+  border-color: var(--gold);
+  box-shadow: 0 0 15px var(--gold);
 }
 
 .player-box.highlight-turn {
-  border: 2px solid var(--gold) !important;
-  animation: pulse-turn 1.5s infinite;
-  background: rgba(212, 175, 55, 0.15);
-  z-index: 10;
+  border-color: #ff4757;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px #ff4757;
 }
 
-@keyframes pulse-turn {
-  0% { box-shadow: 0 0 5px var(--gold); }
-  50% { box-shadow: 0 0 20px var(--gold); }
-  100% { box-shadow: 0 0 5px var(--gold); }
-}
+/* Tọa độ các ghế (10 ghế) */
+.seat-0 { left: 5%; top: 20%; }
+.seat-1 { left: 2%; top: 45%; }
+.seat-2 { left: 8%; top: 70%; }
+.seat-3 { left: 25%; top: 85%; }
+.seat-4 { left: 42%; top: 90%; }
+.seat-5 { right: 42%; top: 90%; }
+.seat-6 { right: 25%; top: 85%; }
+.seat-7 { right: 8%; top: 70%; }
+.seat-8 { right: 2%; top: 45%; }
+.seat-9 { right: 5%; top: 20%; }
 
-/* Hand and Card Layout */
+/* Bài và các thành phần khác */
 .hand {
   display: flex;
   justify-content: center;
-  align-items: center;
-  min-height: 100px;
-  padding: 10px;
-  flex-wrap: nowrap; /* Luôn dàn hàng ngang */
+  margin: 5px 0;
+  min-height: 60px;
 }
 
-.card {
-  width: 60px;
-  height: 90px;
-  background: var(--card-white);
-  border-radius: 5px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-  position: relative;
-  transition: transform 0.3s ease;
-  user-select: none;
-  border: 1px solid #ddd;
-  margin-left: -35px; /* Hiệu ứng xòe bài */
+.card-wrapper {
+  margin-left: -35px;
+  transition: transform 0.2s;
 }
+.card-wrapper:first-child { margin-left: 0; }
+.card-wrapper:hover { transform: translateY(-10px) rotate(-5deg); z-index: 100; }
 
-.card:first-child {
-  margin-left: 0;
-}
-
-.card .rank {
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.card .suit {
-  font-size: 0.7rem;
-}
-
-.card .center-suit {
-  font-size: 1.5rem;
-}
-
-/* Auth UI */
-.auth-container {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at center, #1a472a 0%, #0a2412 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.auth-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  padding: 40px;
-  border-radius: 20px;
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-}
-
-.auth-input {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 12px 15px;
-  border-radius: 8px;
-  color: white;
-  font-size: 1rem;
-  outline: none;
-  transition: all 0.3s ease;
-}
-
-.auth-input:focus {
-  border-color: var(--gold);
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* Big Spinner for New Account */
-.big-spinner-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.95);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.big-spinner-box {
-  width: 200px;
-  height: 200px;
-  border: 10px solid var(--gold);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
+.score-badge {
+  font-weight: bold;
   color: var(--gold);
-  animation: spin 0.1s linear infinite;
-  box-shadow: 0 0 50px var(--gold);
-  margin-bottom: 30px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Betting Input */
-.bet-input {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid var(--gold);
-  color: white;
-  width: 80px;
-  padding: 4px;
-  border-radius: 4px;
-  text-align: center;
-  margin-top: 5px;
+  text-shadow: 0 0 5px black;
 }
 
 .balance-tag {
-  font-size: 0.8rem;
   color: #2ecc71;
   font-weight: bold;
+  font-size: 0.9rem;
 }
+
 .status-tag {
-  font-size: 0.7rem;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: 5px;
+  font-size: 0.7rem;
   font-weight: bold;
   text-transform: uppercase;
 }
-
-.status-win { background: #2ecc71; color: #fff; }
-.status-lose { background: #e74c3c; color: #fff; }
-.status-draw { background: #f1c40f; color: #000; }
+.status-win { background: #2ecc71; color: black; }
+.status-lose { background: #e74c3c; color: white; }
+.status-draw { background: #f1c40f; color: black; }
 
 .btn-xet {
-  padding: 4px 12px;
-  font-size: 0.7rem;
   background: var(--gold);
   color: black;
   border: none;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: bold;
   cursor: pointer;
+}
+
+.bet-input {
+  width: 100%;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 5px;
+  border-radius: 5px;
+  font-size: 0.8rem;
   margin-top: 5px;
 }
 
-.card.red {
-  color: var(--card-red);
+.transaction-sidebar {
+  transition: transform 0.3s;
 }
+.transaction-sidebar:hover { transform: translateX(5px); }
 
-.card.black {
-  color: var(--card-black);
-}
-
-/* Hidden Card */
-.card.back {
-  background: repeating-linear-gradient(
-    45deg,
-    #b02e2e,
-    #b02e2e 10px,
-    #8e2424 10px,
-    #8e2424 20px
-  );
-  border: 4px solid white;
-}
-
-/* Controls */
-.controls {
-  display: flex;
-  gap: 1.5rem;
-  margin-top: 2rem;
-}
-
-.btn {
-  padding: 1rem 2.5rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.btn-gold {
-  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
-  color: #000;
-  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
-}
-
-.btn-gold:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
-}
-
-.btn-gold:active {
-  transform: scale(0.95);
-}
-
-.btn-glass {
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  color: white;
-  backdrop-filter: blur(5px);
-}
-
-.btn-glass:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Score Badge */
-.score-badge {
-  background: var(--gold);
-  color: #000;
-  padding: 0.2rem 1rem;
-  border-radius: 20px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-
-/* Animations */
-@keyframes deal {
-  from {
-    transform: translate(-500px, -500px) rotate(-45deg);
-    opacity: 0;
-  }
-  to {
-    transform: translate(0, 0) rotate(0);
-    opacity: 1;
-  }
-}
-
-.card-deal {
-  animation: deal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
 }
