@@ -43,29 +43,29 @@ describe('Game Logic Tests', () => {
 
   describe('checkSpecialHands', () => {
     it('should detect Xi Bang (AA)', () => {
-      const player: any = {
+      const player = {
         hand: [
           { rank: 'A', suit: 'hearts', isRevealed: true },
           { rank: 'A', suit: 'clubs', isRevealed: true }
         ],
         status: 'playing'
-      };
+      } as Player;
       expect(checkSpecialHands(player)).toBe('xi_bang');
     });
 
     it('should detect Xi Dach (A + 10/J/Q/K)', () => {
-      const player: any = {
+      const player = {
         hand: [
           { rank: 'A', suit: 'hearts', isRevealed: true },
           { rank: 'K', suit: 'clubs', isRevealed: true }
         ],
         status: 'playing'
-      };
+      } as Player;
       expect(checkSpecialHands(player)).toBe('xi_dach');
     });
 
     it('should detect Ngu Linh (5 cards <= 21)', () => {
-      const player: any = {
+      const player = {
         hand: [
           { rank: '2', suit: 'hearts', isRevealed: true },
           { rank: '3', suit: 'clubs', isRevealed: true },
@@ -74,19 +74,19 @@ describe('Game Logic Tests', () => {
           { rank: '2', suit: 'hearts', isRevealed: true }
         ],
         status: 'playing'
-      };
+      } as Player;
       expect(checkSpecialHands(player)).toBe('ngu_linh');
     });
 
     it('should detect Bust (score > 21)', () => {
-      const player: any = {
+      const player = {
         hand: [
           { rank: '10', suit: 'hearts', isRevealed: true },
           { rank: 'J', suit: 'clubs', isRevealed: true },
           { rank: '5', suit: 'spades', isRevealed: true }
         ],
         status: 'playing'
-      };
+      } as Player;
       expect(checkSpecialHands(player)).toBe('bust');
     });
   });

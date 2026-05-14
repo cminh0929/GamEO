@@ -1,0 +1,290 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { GameRoomService } from '../lib/services/GameRoomService';
+import { Deck } from '../lib/game/Deck';
+import { Hand } from '../lib/game/Hand';
+import { supabase } from '../lib/supabase';
+import type { GameState, GameStatus, CardType } from '../types/game';
+import type { Profile } from '../types/platform';
+
+const ROOM_ID = 'gameo-table-1';
+
+const createEmptyState = (): GameState => ({
+  deck: [],
+  dealer: { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 },
+  players: Array.from({ length: 7 }, (_, i) => ({
+    id: '', name: `Vị trí ${i + 1}`, hand: [], score: 0, status: 'playing',
+    isChecked: false, gameResult: null, balance: 0, currentBet: 0,
+  })),
+  status: 'ended',
+  turnIndex: 0,
+  lastActionAt: Date.now(),
+});
+
+type ExecuteTransaction = (userId: string, amount: number, type: string, description: string) => Promise<void>;
+
+export function useXiDachRoom(
+  profile: Profile | null,
+  executeTransaction: ExecuteTransaction,
+) {
+  const [gameState, setGameState] = useState<GameState>(createEmptyState());
+
+  // Fetch initial state + subscribe to realtime updates
+  useEffect(() => {
+    GameRoomService.fetchGameState(ROOM_ID).then((state) => {
+      if (state) setGameState(state);
+    });
+
+    const channel = GameRoomService.subscribeToRoom(ROOM_ID, setGameState);
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const updateRemoteState = useCallback(async (newState: GameState) => {
+    setGameState(newState);
+    await GameRoomService.updateGameState(ROOM_ID, newState);
+  }, []);
+
+  const getNextTurnState = useCallback((current: GameState): GameState => {
+    let nextIdx = current.turnIndex + 1;
+    while (nextIdx < current.players.length && current.players[nextIdx].id === '') nextIdx++;
+    if (nextIdx >= current.players.length) {
+      return { ...current, turnIndex: -1, turnDeadline: 0 };
+    }
+    return { ...current, turnIndex: nextIdx, turnDeadline: Date.now() + 30000 };
+  }, []);
+
+  // --- Game actions ---
+  const takeRole = useCallback((type: 'dealer' | 'player', index?: number) => {
+    if (!profile) return;
+    const alreadySeated =
+      gameState.players.some((p) => p.id === profile.id) ||
+      gameState.dealer.id === profile.id;
+    if (alreadySeated) return alert('Bạn đã có vị trí rồi!');
+
+    const newState = { ...gameState, lastActionAt: Date.now() };
+    if (type === 'dealer') {
+      newState.dealer = {
+        ...newState.dealer,
+        id: profile.id, name: `${profile.username} 👑`,
+        balance: profile.balance, avatarUrl: profile.avatar_url ?? undefined,
+      };
+    } else if (index !== undefined) {
+      newState.players[index] = {
+        ...newState.players[index],
+        id: profile.id, name: profile.username,
+        balance: profile.balance, avatarUrl: profile.avatar_url ?? undefined,
+      };
+    }
+    updateRemoteState(newState);
+  }, [profile, gameState, updateRemoteState]);
+
+  const kickPlayer = useCallback((index: number) => {
+    if (gameState.dealer.id !== profile?.id) return;
+    if (gameState.status === 'playing') return alert('Không thể kích người chơi khi đang trong ván bài!');
+    const newState = { ...gameState, lastActionAt: Date.now() };
+    newState.players[index] = {
+      id: '', name: `Vị trí ${index + 1}`, hand: [], score: 0, status: 'playing',
+      isChecked: false, gameResult: null, balance: 0, currentBet: 0,
+    };
+    updateRemoteState(newState);
+  }, [profile, gameState, updateRemoteState]);
+
+  const leaveRole = useCallback(async () => {
+    if (!profile) return;
+    const newState = { ...gameState, lastActionAt: Date.now() };
+    const isGameActive = gameState.status === 'playing';
+
+    if (newState.dealer.id === profile.id) {
+      const isRoomActive = gameState.status === 'playing' || gameState.status === 'betting';
+      if (isRoomActive) {
+        newState.status = 'ended';
+        newState.players.forEach((p) => {
+          p.hand = []; p.currentBet = 0; p.gameResult = null;
+          p.isChecked = false; p.status = 'playing';
+        });
+      }
+      newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
+    } else {
+      const pIdx = newState.players.findIndex((p) => p.id === profile.id);
+      if (pIdx !== -1) {
+        const player = newState.players[pIdx];
+        if (isGameActive && player.hand.length > 0 && !player.isChecked) {
+          const bet = player.currentBet;
+          await executeTransaction(player.id, -bet, 'penalty', 'Phạt thoát ván bài (Rage Quit)');
+          if (newState.dealer.id) {
+            await executeTransaction(newState.dealer.id, bet, 'win', `Nhà Cái hưởng tiền từ ${player.name} thoát bàn`);
+          }
+          newState.dealer.balance += bet;
+        }
+        newState.players[pIdx] = {
+          id: '', name: `Vị trí ${pIdx + 1}`, hand: [], score: 0, status: 'playing',
+          isChecked: false, gameResult: null, balance: 0, currentBet: 0,
+        };
+        if (gameState.turnIndex === pIdx) {
+          const next = getNextTurnState(newState);
+          newState.turnIndex = next.turnIndex;
+          newState.turnDeadline = next.turnDeadline;
+        }
+      }
+    }
+    updateRemoteState(newState);
+  }, [profile, gameState, executeTransaction, getNextTurnState, updateRemoteState]);
+
+  const placeBet = useCallback(async (index: number, amount: number) => {
+    if (!profile || amount <= 0) return;
+    if (amount > profile.balance) return alert('Không đủ tiền!');
+    const newState = { ...gameState, lastActionAt: Date.now() };
+    newState.players[index].currentBet = amount;
+    updateRemoteState(newState);
+  }, [profile, gameState, updateRemoteState]);
+
+  const startNewGame = useCallback(() => {
+    if (gameState.dealer.id !== profile?.id) return alert('Chỉ Nhà Cái mới được bắt đầu!');
+
+    if (gameState.status !== 'betting') {
+      const newState = { ...gameState, status: 'betting' as GameStatus, lastActionAt: Date.now() };
+      newState.players.forEach((p) => { p.currentBet = 0; p.gameResult = null; p.isChecked = false; p.hand = []; p.status = 'playing'; });
+      updateRemoteState(newState);
+      return;
+    }
+
+    const activePlayers = gameState.players.filter((p) => p.id !== '');
+    if (activePlayers.length === 0) return alert('Cần ít nhất 1 người chơi để bắt đầu!');
+    if (activePlayers.some((p) => p.currentBet <= 0)) return alert('Còn người chưa cược!');
+
+    const newDeck = Deck.createShuffled();
+    const dealerHand = [newDeck.pop()!, newDeck.pop()!];
+    const updatedPlayers = gameState.players.map((p) => {
+      if (p.id === '') return p;
+      const hand = [newDeck.pop()!, newDeck.pop()!];
+      return { ...p, hand: hand as CardType[], score: Hand.calculateScore(hand as CardType[]), status: 'playing' as const, isChecked: false };
+    });
+
+    const firstPlayerIndex = updatedPlayers.findIndex((p) => p.id !== '');
+    updateRemoteState({
+      ...gameState, deck: newDeck,
+      dealer: { ...gameState.dealer, hand: dealerHand as CardType[], score: Hand.calculateScore(dealerHand as CardType[]), status: 'playing' },
+      players: updatedPlayers, status: 'playing',
+      turnIndex: firstPlayerIndex !== -1 ? firstPlayerIndex : 0,
+      turnDeadline: Date.now() + 30000,
+      lastActionAt: Date.now(),
+    });
+  }, [profile, gameState, updateRemoteState]);
+
+  const hit = useCallback((idx: number) => {
+    if (gameState.turnIndex !== idx) return;
+    const player = gameState.players[idx];
+    if (player.hand.length >= 5) return alert('Đã đạt giới hạn tối đa 5 lá bài!');
+
+    const newDeck = [...gameState.deck];
+    const newCard = newDeck.pop()!;
+    const updatedPlayers = [...gameState.players];
+    const newHand = [...player.hand, newCard];
+    const newScore = Hand.calculateScore(newHand);
+    const isPenalty = newScore >= 28;
+    const isMaxCards = newHand.length === 5;
+
+    if (isPenalty) {
+      const otherPlayers = gameState.players.filter((p) => p.id !== '' && p.id !== profile?.id);
+      const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + player.currentBet;
+      executeTransaction(player.id, -totalTableBet, 'penalty', `ĐỀN NGUYÊN BÀN (Quắc ${newScore}đ)`);
+      if (gameState.dealer.id) executeTransaction(gameState.dealer.id, totalTableBet, 'win', `Nhà Cái thu tiền đền nguyên bàn từ ${player.name}`);
+      alert(`BẠN BỊ ĐỀN NGUYÊN BÀN! Mất tổng cộng $${totalTableBet.toLocaleString()} cho Nhà Cái.`);
+      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: 'bust', isChecked: true };
+    } else {
+      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: isMaxCards ? 'stay' : 'playing' };
+    }
+
+    const nextState = { ...gameState, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
+    const finalState = (isPenalty || isMaxCards) ? getNextTurnState(nextState) : nextState;
+    updateRemoteState(finalState);
+  }, [gameState, profile, executeTransaction, getNextTurnState, updateRemoteState]);
+
+  const stand = useCallback((idx: number) => {
+    if (gameState.turnIndex !== idx) return;
+    const updatedPlayers = [...gameState.players];
+    updatedPlayers[idx].status = 'stay';
+    updateRemoteState(getNextTurnState({ ...gameState, players: updatedPlayers, lastActionAt: Date.now() }));
+  }, [gameState, getNextTurnState, updateRemoteState]);
+
+  const checkPlayer = useCallback(async (idx: number) => {
+    if (gameState.dealer.id !== profile?.id) return;
+    const dealerScore = Hand.calculateScore(gameState.dealer.hand);
+    if (dealerScore < 15 && gameState.dealer.hand.length < 5) {
+      return alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
+    }
+
+    const updatedPlayers = [...gameState.players];
+    const player = updatedPlayers[idx];
+    const bet = player.currentBet;
+    let multiplier = 1;
+    const playerSpecial = Hand.checkSpecialHands(player);
+    const dealerSpecial = Hand.checkSpecialHands(gameState.dealer);
+
+    let result: 'win' | 'lose' | 'draw' = 'draw';
+    if (playerSpecial === 'xi_bang' || playerSpecial === 'xi_dach') {
+      if (dealerSpecial === playerSpecial) result = 'draw';
+      else { result = 'win'; multiplier = playerSpecial === 'xi_bang' ? 4 : 3; }
+    } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
+      result = 'lose';
+    } else if (player.score > 21) {
+      result = 'lose';
+    } else if (playerSpecial === 'ngu_linh') {
+      if (dealerSpecial === 'ngu_linh') result = 'draw';
+      else { result = 'win'; multiplier = 2; }
+    } else if (dealerScore > 21) {
+      result = 'win';
+    } else if (dealerScore > player.score) {
+      result = 'lose';
+    } else if (dealerScore < player.score) {
+      result = 'win';
+    }
+
+    const finalWinAmount = bet * multiplier;
+    if (result === 'win') {
+      await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${playerSpecial || player.score + 'đ'}) x${multiplier}`);
+      await executeTransaction(gameState.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
+    } else if (result === 'lose') {
+      await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
+      await executeTransaction(gameState.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
+    }
+
+    updatedPlayers[idx] = { ...player, isChecked: true, gameResult: result };
+    updateRemoteState({ ...gameState, players: updatedPlayers, lastActionAt: Date.now() });
+  }, [gameState, profile, executeTransaction, updateRemoteState]);
+
+  const dealerHit = useCallback(() => {
+    if (gameState.dealer.id !== profile?.id) return;
+    if (gameState.dealer.hand.length >= 5) return alert('Nhà Cái đã đạt giới hạn 5 lá bài!');
+    if (gameState.players.some((p) => p.id !== '' && p.isChecked)) return alert('Đã xét bài, không thể rút thêm!');
+    const newDeck = [...gameState.deck];
+    const newCard = newDeck.pop()!;
+    const newHand = [...gameState.dealer.hand, newCard];
+    updateRemoteState({
+      ...gameState, deck: newDeck,
+      dealer: { ...gameState.dealer, hand: newHand, score: Hand.calculateScore(newHand) },
+      lastActionAt: Date.now(),
+    });
+  }, [gameState, profile, updateRemoteState]);
+
+  const resetTableToEmpty = useCallback(async () => {
+    await updateRemoteState(createEmptyState());
+  }, [updateRemoteState]);
+
+  return {
+    gameState,
+    actions: {
+      takeRole,
+      kickPlayer,
+      leaveRole,
+      placeBet,
+      startNewGame,
+      hit,
+      stand,
+      checkPlayer,
+      dealerHit,
+      resetTableToEmpty,
+    },
+  };
+}
