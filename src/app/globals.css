@@ -153,6 +153,17 @@ body {
   box-shadow: 0 10px 20px rgba(0,0,0,0.5);
 }
 
+.player-box.active-turn {
+  border-color: #ff4757;
+  box-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
+  transform: scale(1.05);
+}
+
+.player-box.is-me {
+  background: rgba(212,175,55,0.1);
+  border-color: var(--gold);
+}
+
 /* Tọa độ Oval mới: An toàn hơn, không bị tràn lề */
 .seat-0 { left: 2%; top: 15%; }
 .seat-1 { left: 0%; top: 45%; }
