@@ -25,7 +25,7 @@ export function PlayerSeat({
   onSit, onKick, onPlaceBet, onHit, onStand, onCheckPlayer,
 }: PlayerSeatProps) {
   const isMe = player.id === profile?.id;
-  const isMyTurn = gameState.turnIndex === index;
+  const isMyTurn = gameState.status === 'playing' && gameState.turnIndex === index && player.id !== '';
   const isDealer = gameState.dealer.id === profile?.id;
   const notSeated = !gameState.players.some((p) => p.id === profile?.id) && gameState.dealer.id !== profile?.id;
   const dealerScore = Hand.calculateScore(gameState.dealer.hand);
