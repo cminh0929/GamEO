@@ -315,9 +315,10 @@ export default function GameDashboard() {
           </div>
           <div className="hand">
             {gameState.dealer.hand.map((card, i) => {
-              // Hiển thị nếu là chủ, hoặc ván đã kết thúc, hoặc Nhà Cái đã bắt đầu XÉT bài
-              const isAnyPlayerChecked = gameState.players.some(p => p.isChecked);
-              const isVisible = gameState.dealer.id === profile?.id || gameState.status === 'ended' || isAnyPlayerChecked;
+              // Kiểm tra xem chính mình có phải là người đã được xét hay chưa
+              const isMeChecked = gameState.players.some(p => p.id === profile?.id && p.isChecked);
+              // Hiển thị nếu: 1. Là Nhà Cái | 2. Ván kết thúc | 3. Chính mình là người được xét
+              const isVisible = gameState.dealer.id === profile?.id || gameState.status === 'ended' || isMeChecked;
               return <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />;
             })}
           </div>
