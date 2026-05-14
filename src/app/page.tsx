@@ -32,7 +32,7 @@ export default function GameDashboard() {
   const [gameState, setGameState] = useState<GameState>({
     deck: [],
     dealer: { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 },
-    players: Array.from({ length: 10 }, (_, i) => ({
+    players: Array.from({ length: 7 }, (_, i) => ({
       id: '', name: `Vị trí ${i + 1}`, hand: [], score: 0, status: 'playing', isChecked: false, gameResult: null, balance: 0, currentBet: 0,
     })),
     status: 'ended',
@@ -144,7 +144,7 @@ export default function GameDashboard() {
     const emptyState: GameState = {
       deck: [],
       dealer: { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 },
-      players: Array.from({ length: 10 }, (_, i) => ({
+      players: Array.from({ length: 7 }, (_, i) => ({
         id: '', name: `Vị trí ${i + 1}`, hand: [], score: 0, status: 'playing', isChecked: false, gameResult: null, balance: 0, currentBet: 0,
       })),
       status: 'ended',

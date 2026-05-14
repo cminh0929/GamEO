@@ -174,17 +174,14 @@ body {
   border-color: var(--gold);
 }
 
-/* Tọa độ Oval mới: Nâng cao các ghế dưới để không bị che */
-.seat-0 { left: 2%; top: 15%; }
-.seat-1 { left: 0%; top: 45%; }
-.seat-2 { left: 2%; top: 75%; }
-.seat-3 { left: 18%; top: 88%; }
-.seat-4 { left: 45%; top: 88%; }
-.seat-5 { left: 72%; top: 88%; }
-.seat-6 { left: 88%; top: 75%; }
-.seat-7 { left: 90%; top: 45%; }
-.seat-8 { left: 88%; top: 15%; }
-.seat-9 { left: 45%; top: -5%; }
+/* Tọa độ Oval mới cho 7 người chơi (Bỏ 3 ghế dưới) */
+.seat-0 { left: 1%; top: 65%; }
+.seat-1 { left: 3%; top: 35%; }
+.seat-2 { left: 22%; top: 8%; }
+.seat-3 { left: 45%; top: -12%; } /* Vị trí cao nhất trên đầu */
+.seat-4 { left: 68%; top: 8%; }
+.seat-5 { left: 87%; top: 35%; }
+.seat-6 { left: 89%; top: 65%; }
 
 /* Hand & Cards */
 .hand {
