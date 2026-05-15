@@ -18,7 +18,9 @@ Từ cao xuống thấp:
 ## 3. Quy tắc Rút bài (Hit) và Dừng (Stand)
 ### Đối với Người chơi:
 -   **Đủ tuổi**: Phải đạt tối thiểu **16 điểm** mới được quyền Dừng (Stand) thủ công.
--   **Auto-stand (Hết giờ)**: Nếu hết 30 giây người chơi không thao tác, hệ thống tự động Dừng (Stand). Nếu lúc này người chơi chưa đủ 16 điểm, sẽ bị xử **Thua ngay lập tức** khi Nhà cái xét bài (trừ khi có bộ đặc biệt).
+-   **Auto-Action (Hết giờ)**: Nếu hết 30 giây người chơi không thao tác:
+    -   Nếu **dưới 16 điểm**: Hệ thống tự động **Rút bài (Hit)** cho đến khi đủ tuổi hoặc Quắc/5 lá.
+    -   Nếu **từ 16 điểm trở lên**: Hệ thống tự động **Dừng (Stand)**.
 -   **Quắc (Bust)**: Tổng điểm từ **22 đến 27**. Người chơi **không bị tự động Dừng** khi Quắc, có thể rút tiếp cho đến khi đủ 5 lá hoặc bị Đền.
 -   **Đền (Penalty)**: Tổng điểm **>= 28**. Người chơi bị xử thua ngay lập tức và trạng thái chuyển sang `den`.
 -   **Giới hạn**: Tối đa 5 lá bài.

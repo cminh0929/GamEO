@@ -120,6 +120,8 @@ export function useXiDachRoom(
     if (newState.dealer.id === profile.id) {
       const isRoomActive = gs.status === 'playing' || gs.status === 'betting';
       if (isRoomActive) {
+        // Refund all before ending
+        await refundAllPlayers(gs);
         newState.status = 'ended';
         // Fix: clone players array properly instead of mutating through shallow ref
         newState.players = newState.players.map((p) => ({
@@ -408,9 +410,57 @@ export function useXiDachRoom(
     updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
-  const resetTableToEmpty = useCallback(async () => {
-    await updateRemoteState(createEmptyState());
-  }, [updateRemoteState]);
+  const refundAllPlayers = useCallback(async (gs: GameState) => {
+    if (!gs.dealer.id) return;
+    for (const player of gs.players) {
+      if (player.id && player.currentBet > 0) {
+        try {
+          console.log(`[refundAllPlayers] Refunding ${player.currentBet} to ${player.name}`);
+          // Dealer pays back to player
+          await executeTransaction(player.id, player.currentBet, 'refund', 'Nhà Cái vắng mặt — Hoàn trả tiền cược');
+          await executeTransaction(gs.dealer.id, -player.currentBet, 'refund', `Hoàn trả tiền cược cho ${player.name}`);
+        } catch (err) {
+          console.error('[refundAllPlayers] Failed to refund player', player.id, err);
+        }
+      }
+    }
+  }, [executeTransaction]);
+
+  const handleDealerAFK = useCallback(async () => {
+    const gs = gameStateRef.current;
+    if (gs.dealer.id === '') return;
+
+    if (gs.status === 'ended') {
+      console.log('[handleDealerAFK] Phase: ended. Resetting table.');
+      await resetTableToEmpty();
+    } else if (gs.status === 'betting') {
+      console.log('[handleDealerAFK] Phase: betting. Refunding and resetting.');
+      await refundAllPlayers(gs);
+      await resetTableToEmpty();
+    } else if (gs.status === 'playing') {
+      if (gs.turnIndex === -1) {
+        // Dealer's turn
+        const engine = new XiDachEngine(gs);
+        const dealer = gs.dealer;
+        const res = engine.canDealerCheck(dealer);
+        if (res.allowed) {
+          console.log('[handleDealerAFK] Phase: playing (Dealer turn). Auto-checking all.');
+          await checkAllPlayers();
+        } else {
+          console.log('[handleDealerAFK] Phase: playing (Dealer turn). Auto-hitting.');
+          await dealerHit();
+        }
+      } else {
+        // Still players' turn, but dealer is idle (maybe players are idle too?)
+        // If players are idle, they will be handled by autoAction (30s).
+        // If the dealer is idle for 60s, it means NO action (including player actions) 
+        // has happened. This is a dead room.
+        console.log('[handleDealerAFK] Phase: playing (Dead room). Refunding and resetting.');
+        await refundAllPlayers(gs);
+        await resetTableToEmpty();
+      }
+    }
+  }, [resetTableToEmpty, refundAllPlayers, checkAllPlayers, dealerHit]);
 
   return {
     gameState,
@@ -427,6 +477,7 @@ export function useXiDachRoom(
       dealerHit,
       resetTableToEmpty,
       autoAction,
+      handleDealerAFK,
     },
   };
 }

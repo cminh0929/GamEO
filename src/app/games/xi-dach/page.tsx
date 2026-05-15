@@ -110,11 +110,16 @@ function XiDachGame() {
     if (idleTimeLeft !== 0) return;
     if (!profile) return;
     if (gameState.dealer.id === '') return; // Bàn đã trống rồi
-    if (gameState.dealer.id === profile.id) return; // Dealer không tự reset chính mình
+    // Để tránh trùng lặp giao dịch Hoàn tiền, chỉ duy nhất 1 người trong phòng gửi lệnh xử lý AFK
+    const firstSeated = gameState.players.find((p) => p.id !== '');
+    const firstPresent = allPresent[0];
+    const triggerId = firstSeated ? firstSeated.id : (firstPresent?.id);
     
-    // Bất kỳ ai thấy hết giờ đều có quyền gửi lệnh reset để đảm bảo bàn không bị kẹt
-    actions.resetTableToEmpty();
-  }, [idleTimeLeft, profile, gameState.dealer.id, actions]);
+    if (triggerId === profile.id) {
+      console.log('[page] You are the designated AFK handler. Executing...');
+      actions.handleDealerAFK();
+    }
+  }, [idleTimeLeft, profile, gameState.dealer.id, gameState.players, allPresent, actions]);
 
   // ── Blocked tab overlay ──────────────────────────────────────────────────
   if (isBlocked) return <BlockedTabScreen />;
