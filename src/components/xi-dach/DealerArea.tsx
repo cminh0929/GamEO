@@ -14,10 +14,12 @@ interface DealerAreaProps {
   onDealerHit: () => void;
   onResetTable: () => void;
   onTakeDealer: () => void;
+  onKick: (index: 'dealer') => void;
+  isAdmin?: boolean;
 }
 
 export function DealerArea({
-  dealer, gameState, profile, chatBubble, onDealerHit, onResetTable, onTakeDealer,
+  dealer, gameState, profile, chatBubble, onDealerHit, onResetTable, onTakeDealer, onKick, isAdmin,
 }: DealerAreaProps) {
   const isDealer = dealer.id === profile?.id;
   const isMeChecked = gameState.players.some((p) => p.id === profile?.id && p.isChecked);
@@ -37,7 +39,17 @@ export function DealerArea({
           {dealer.id ? dealer.name : 'ĐANG TRỐNG'}
         </span>
         {dealer.id ? (
-          <span className="dealer-balance">${(dealer.balance ?? 0).toLocaleString()}</span>
+          <>
+            <span className="dealer-balance">${(dealer.balance ?? 0).toLocaleString()}</span>
+            {isAdmin && dealer.id !== profile?.id && (
+              <button
+                className="btn-kick dealer-kick"
+                onClick={(e) => { e.stopPropagation(); onKick('dealer'); }}
+                title="Admin Kick Dealer"
+                style={{ marginLeft: '8px', padding: '2px 6px', fontSize: '12px' }}
+              >❌</button>
+            )}
+          </>
         ) : (
           notSeated && (
             <button className="btn-sit dealer" onClick={onTakeDealer}>

@@ -28,6 +28,7 @@ export function useXiDachRoom(
   profile: Profile | null,
   executeTransaction: ExecuteTransaction,
   refreshLogs?: () => Promise<void>,
+  isAdmin?: boolean,
 ) {
   const [gameState, setGameState] = useState<GameState>(createEmptyState());
   // Ref always holds the latest gameState — fixes stale closure race condition
@@ -43,16 +44,36 @@ export function useXiDachRoom(
     });
 
     const channel = GameRoomService.subscribeToRoom(ROOM_ID, (state) => {
-      setGameState(state);
-      gameStateRef.current = state;
+      // Only update if the received state is newer than current (using lastActionAt)
+      // This prevents late-arriving events from overwriting local optimistic updates
+      if (!gameStateRef.current.lastActionAt || (state.lastActionAt && state.lastActionAt > gameStateRef.current.lastActionAt)) {
+        setGameState(state);
+        gameStateRef.current = state;
+      } else if (state.lastActionAt === gameStateRef.current.lastActionAt) {
+        // Same timestamp, but could be different content if multiple updates happened in same ms
+        // (Unlikely but possible). We update anyway to be safe if it's not our local state.
+        setGameState(state);
+        gameStateRef.current = state;
+      }
     });
     return () => { supabase.removeChannel(channel); };
   }, []);
 
   const updateRemoteState = useCallback(async (newState: GameState) => {
+    const oldState = gameStateRef.current;
+    // Optimistic update
     setGameState(newState);
     gameStateRef.current = newState;
-    await GameRoomService.updateGameState(ROOM_ID, newState);
+
+    try {
+      await GameRoomService.updateGameState(ROOM_ID, newState);
+    } catch (err) {
+      console.error('[updateRemoteState] Failed to sync state:', err);
+      // Revert on failure
+      setGameState(oldState);
+      gameStateRef.current = oldState;
+      alert('Không thể kết nối máy chủ để cập nhật ván bài. Vui lòng kiểm tra kết nối!');
+    }
   }, []);
 
   const getNextTurnState = useCallback((current: GameState): GameState => {
@@ -94,17 +115,32 @@ export function useXiDachRoom(
     updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
-  const kickPlayer = useCallback((index: number) => {
+  const kickPlayer = useCallback((index: number | 'dealer') => {
     const gs = gameStateRef.current;
-    if (gs.dealer.id !== profile?.id) return;
-    if (gs.status === 'playing') return alert('Không thể kích người chơi khi đang trong ván bài!');
+    const isDealer = gs.dealer.id === profile?.id;
+
+    // Chỉ Nhà Cái hoặc Admin mới được kích
+    if (!isDealer && !isAdmin) return;
+
+    // Nhà Cái không được kích khi đang trong ván, Admin thì được phép (quyền tối cao)
+    if (gs.status === 'playing' && !isAdmin) {
+      return alert('Không thể kích người chơi khi đang trong ván bài!');
+    }
+
     const newState = { ...gs, lastActionAt: Date.now() };
-    newState.players[index] = {
-      id: '', name: `Vị trí ${index + 1}`, hand: [], score: 0, status: 'playing',
-      isChecked: false, gameResult: null, balance: 0, currentBet: 0,
-    };
+
+    if (index === 'dealer') {
+      if (gs.dealer.id === '') return;
+      newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
+    } else {
+      if (gs.players[index].id === '') return;
+      newState.players[index] = {
+        id: '', name: `Vị trí ${index + 1}`, hand: [], score: 0, status: 'playing',
+        isChecked: false, gameResult: null, balance: 0, currentBet: 0,
+      };
+    }
     updateRemoteState(newState);
-  }, [profile, updateRemoteState]);
+  }, [profile, isAdmin, updateRemoteState]);
 
   const leaveRole = useCallback(async () => {
     if (!profile) return;

@@ -3,6 +3,7 @@
   --felt: #1a472a;
   --dark-felt: #0d2b1a;
   --wood: #3e2723;
+  --table-scale: 1;
 }
 
 * {
@@ -380,6 +381,9 @@ body {
   max-width: 1200px;
   height: 60vh;
   perspective: 1000px;
+  transform: scale(var(--table-scale));
+  transform-origin: center center;
+  transition: transform 0.3s ease;
 }
 
 /* Thảm xanh trung tâm */
@@ -573,7 +577,7 @@ body {
 .transaction-sidebar {
   position: fixed;
   left: 20px;
-  bottom: 20px; /* Chuyển xuống góc dưới để không chắn ghế trên */
+  bottom: 20px;
   width: 200px;
   max-height: 250px;
   background: rgba(0,0,0,0.9);
@@ -581,6 +585,40 @@ body {
   border-radius: 15px;
   padding: 12px;
   z-index: 100;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.btn-close-sidebar {
+  display: none;
+  background: none;
+  border: none;
+  color: #ff4757;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 5px;
+}
+
+.btn-toggle-logs {
+  display: none;
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: none;
+  font-size: 1.2rem;
+  z-index: 110;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
 
 .log-list {
@@ -1543,35 +1581,68 @@ body {
   
   /* Transaction Sidebar - Hide or make floating on mobile */
   .transaction-sidebar {
-    width: 160px;
-    left: 10px;
-    bottom: 10px;
-    font-size: 0.6rem;
-    opacity: 0.8;
+    transform: translateX(-220px);
+    opacity: 0;
+    pointer-events: none;
+    bottom: 60px;
+    left: 12px;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
   }
+  .transaction-sidebar.is-open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+  .btn-close-sidebar { display: block; }
+  .btn-toggle-logs { display: flex; align-items: center; justify-content: center; }
+
+  /* Shrink Seats for Mobile */
+  .player-box {
+    width: 110px;
+    padding: 6px;
+  }
+  .player-avatar-img {
+    width: 26px;
+    height: 26px;
+  }
+  .name { font-size: 0.7rem; }
+  .card {
+    width: 34px;
+    height: 48px;
+    font-size: 0.65rem;
+  }
+  .dealer-avatar {
+    width: 50px;
+    height: 50px;
+  }
+  .dealer-name { font-size: 0.9rem; }
 }
 
 /* ============================================================
    ORIENTATION GUARD (Landscape Lock)
    ============================================================ */
 .orientation-guard {
-  display: none;
   position: fixed;
   inset: 0;
   z-index: 9999;
   background: rgba(5, 5, 5, 0.95);
   backdrop-filter: blur(10px);
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 40px;
   text-align: center;
   color: white;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0.5s;
 }
 
 @media (orientation: portrait) and (max-width: 1024px) {
   .orientation-guard {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
   }
   /* Disable scrolling when guard is active */
   body { overflow: hidden !important; }
@@ -1610,4 +1681,19 @@ body {
 @media (max-width: 480px) {
   .lobby-hero-title { font-size: 2.2rem; }
   .game-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-height: 540px) and (orientation: landscape) {
+  :root {
+    --table-scale: 0.75;
+  }
+  .casino-table {
+    margin: 10px auto;
+  }
+}
+
+@media (max-height: 400px) and (orientation: landscape) {
+  :root {
+    --table-scale: 0.65;
+  }
 }

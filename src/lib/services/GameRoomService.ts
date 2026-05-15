@@ -26,8 +26,12 @@ export class GameRoomService {
       .channel(`room-${roomId}-${Date.now()}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'game_rooms', filter: `id=eq.${roomId}` },
-        (payload) => onUpdate((payload.new as { game_state: GameState }).game_state)
+        { event: '*', schema: 'public', table: 'game_rooms', filter: `id=eq.${roomId}` },
+        (payload) => {
+          if (payload.new && (payload.new as { game_state: GameState }).game_state) {
+            onUpdate((payload.new as { game_state: GameState }).game_state);
+          }
+        }
       )
       .subscribe();
     return channel;

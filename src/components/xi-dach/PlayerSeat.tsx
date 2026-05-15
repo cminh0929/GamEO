@@ -19,11 +19,12 @@ interface PlayerSeatProps {
   onHit: (index: number) => void;
   onStand: (index: number) => void;
   onCheckPlayer: (index: number) => void;
+  isAdmin?: boolean;
 }
 
 export function PlayerSeat({
   player, index, gameState, profile, timeLeft, chatBubble,
-  onSit, onKick, onPlaceBet, onHit, onStand, onCheckPlayer,
+  onSit, onKick, onPlaceBet, onHit, onStand, onCheckPlayer, isAdmin,
 }: PlayerSeatProps) {
   const isMe = player.id === profile?.id;
   const isMyTurn = gameState.status === 'playing' && gameState.turnIndex === index && player.id !== '';
@@ -53,10 +54,11 @@ export function PlayerSeat({
         )}
         <span className="name">{player.name}</span>
         {isMyTurn && <span className="timer">{timeLeft}s</span>}
-        {isDealer && player.id !== '' && player.id !== profile?.id && (
+        {(isDealer || isAdmin) && player.id !== '' && player.id !== profile?.id && (
           <button
             className="btn-kick"
             onClick={(e) => { e.stopPropagation(); onKick(index); }}
+            title={isAdmin ? "Admin Kick" : "Kick"}
           >❌</button>
         )}
       </div>

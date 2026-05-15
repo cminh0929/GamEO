@@ -53,9 +53,9 @@ function BlockedTabScreen() {
 
 // ─── Main Game Page ───────────────────────────────────────────────────────────
 function XiDachGame() {
-  const { session, profile } = useAuth();
+  const { session, profile, isAdmin } = useAuth();
   const { logs, executeTransaction, refreshLogs } = useTransactions(session?.user.id);
-  const { gameState, actions } = useXiDachRoom(profile, executeTransaction, refreshLogs);
+  const { gameState, actions } = useXiDachRoom(profile, executeTransaction, refreshLogs, isAdmin);
   const { isBlocked } = useTabGuard(session?.user.id ?? null, ROOM_ID);
   const { timeLeft, idleTimeLeft } = useGameTimer({
     gameState,
@@ -67,6 +67,7 @@ function XiDachGame() {
   const mePresence = profile ? { id: profile.id, name: profile.username, avatarUrl: profile.avatar_url ?? undefined } : null;
   const { spectators, allPresent } = useSpectators(ROOM_ID, mePresence, gameState);
   const { messages: chatMessages, sendMessage, bubbles } = useChat(ROOM_ID, mePresence);
+  const [showLogs, setShowLogs] = React.useState(false);
 
   // Show "XÉT TẤT CẢ" when all seated players have finished their turns
   const isDealer = gameState.dealer.id === profile?.id;
@@ -137,6 +138,8 @@ function XiDachGame() {
               onDealerHit={actions.dealerHit}
               onResetTable={actions.resetTableToEmpty}
               onTakeDealer={() => actions.takeRole('dealer')}
+              onKick={actions.kickPlayer}
+              isAdmin={isAdmin}
             />
 
             {/* Game Status */}
@@ -165,13 +168,17 @@ function XiDachGame() {
             onHit={actions.hit}
             onStand={actions.stand}
             onCheckPlayer={actions.checkPlayer}
+            isAdmin={isAdmin}
           />
         ))}
       </div>
 
-      {/* Sidebar giao dịch */}
-      <div className="transaction-sidebar">
-        <h3>📜 GIAO DỊCH</h3>
+      {/* Sidebar giao dịch - Toggleable on mobile */}
+      <div className={`transaction-sidebar ${showLogs ? 'is-open' : ''}`}>
+        <div className="sidebar-header">
+          <h3>📜 GIAO DỊCH</h3>
+          <button className="btn-close-sidebar" onClick={() => setShowLogs(false)}>×</button>
+        </div>
         <div className="log-list">
           {logs.map((log) => (
             <div key={log.id} className="log-item">
@@ -183,6 +190,10 @@ function XiDachGame() {
           ))}
         </div>
       </div>
+
+      <button className="btn-toggle-logs" onClick={() => setShowLogs(!showLogs)}>
+        📜
+      </button>
 
       {/* Bottom controls */}
       <div className="bottom-controls">
@@ -213,7 +224,7 @@ function XiDachGame() {
       )}
 
       {/* Version badge */}
-      <div className="version-badge">v1.0.2</div>
+      <div className="version-badge">v1.0.3</div>
 
       {/* Spectator drawer */}
       <SpectatorPanel spectators={spectators} allPresent={allPresent} />
