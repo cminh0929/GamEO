@@ -40,7 +40,7 @@ async function delay(ms: number) {
 }
 
 async function processSettlement(userId: string, amount: number, type: string, description: string) {
-  const { error } = await supabase.rpc('update_balance_v2', {
+  const { error } = await supabase.rpc('update_balance', {
     p_user_id: userId,
     p_amount: amount,
     p_type: type,
