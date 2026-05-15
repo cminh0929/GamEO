@@ -67,7 +67,7 @@ export function DealerArea({
           )}
           {dealer.id ? (
             <>
-              <span className="dealer-balance">${(dealer.balance ?? 0).toLocaleString()}</span>
+              <span className="balance-label">${(dealer.balance ?? 0).toLocaleString()}</span>
               <span className="dealer-name">{dealer.name}</span>
               {isAdmin && dealer.id !== profile?.id && (
                 <button

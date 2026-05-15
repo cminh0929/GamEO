@@ -87,7 +87,7 @@ export function PlayerSeat({
       {!isInfoAtBottom && player.id !== '' && (
         <div className="player-header">
           <div className="player-info-column">
-            <span className="balance">${(player.balance ?? 0).toLocaleString()}</span>
+            <span className="balance-label">${(player.balance ?? 0).toLocaleString()}</span>
             <div className="name-row" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {player.avatarUrl && (
                 <img src={player.avatarUrl} alt="Avt" className="player-avatar-img" />
@@ -200,7 +200,7 @@ export function PlayerSeat({
               )}
               <span className="name">{player.name}</span>
             </div>
-            <span className="balance">${(player.balance ?? 0).toLocaleString()}</span>
+            <span className="balance-label">${(player.balance ?? 0).toLocaleString()}</span>
           </div>
           <div className="header-actions" style={{ display: 'flex', justifyContent: 'center', width: '100%', gap: '10px' }}>
              {isMyTurn && <span className="timer">{timeLeft}s</span>}
