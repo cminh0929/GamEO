@@ -145,13 +145,20 @@ export class XiDachEngine {
     this.updateLastAction();
     this.state.deck = newDeck;
 
-    // Logic Đền bài (>= 28 điểm)
+    // Logic Phân loại bài
     if (newScore >= 28) {
+      // ĐỀN: Tự động qua lượt
       this.state.players[idx] = { ...player, hand: newHand, score: newScore, status: 'den' };
       this.getNextTurnState();
+    } else if (newScore > 21) {
+      // QUẮC: Cho phép rút tiếp đến 5 lá, chỉ qua lượt nếu đủ 5 lá
+      this.state.players[idx] = { ...player, hand: newHand, score: newScore, status: 'bust' };
+      if (isMaxCards) {
+        this.getNextTurnState();
+      }
     } else {
-      // Logic Quắc (22-27): Không bắt buộc dừng
-      this.state.players[idx] = { ...player, hand: newHand, score: newScore, status: isMaxCards ? 'stay' : 'playing' };
+      // Đủ điểm hoặc Ngũ Linh: Chỉ qua lượt nếu đủ 5 lá
+      this.state.players[idx] = { ...player, hand: newHand, score: newScore, status: 'playing' };
       if (isMaxCards) {
         this.getNextTurnState();
       }
@@ -187,6 +194,48 @@ export class XiDachEngine {
     return this.state;
   }
 
+  canDealerCheck(dealer: Player): { allowed: boolean; reason?: string } {
+    const score = Hand.calculateScore(dealer.hand);
+    const special = Hand.checkSpecialHands(dealer);
+    const isSpecial = special === 'xi_bang' || special === 'xi_dach';
+    
+    if (!isSpecial && score < 15 && dealer.hand.length < 5) {
+      return { allowed: false, reason: 'Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!' };
+    }
+    return { allowed: true };
+  }
+
+  static calculatePlayerSettlement(player: Player, dealer: Player, totalTableBets: number) {
+    const bet = player.currentBet;
+    let amount = 0;
+    let type: 'win' | 'lose' | 'draw' = 'draw';
+    let description = '';
+    let result: 'win' | 'lose' | 'draw' = 'draw';
+
+    if (player.status === 'den') {
+      amount = -totalTableBets;
+      type = 'lose';
+      description = `Đền bài (>= 28đ) - Phạt tổng cược bàn`;
+      result = 'lose';
+    } else {
+      const res = this.calculateResult(player, dealer);
+      result = res.result;
+      if (res.result === 'win') {
+        amount = bet * res.multiplier;
+        type = 'win';
+        description = `Thắng ván bài (${res.specialHand || player.score + 'đ'}) x${res.multiplier}`;
+      } else if (res.result === 'lose') {
+        amount = -bet;
+        type = 'lose';
+        description = `Thua ván bài (${player.score + 'đ'})`;
+      } else {
+        description = `Hòa ván bài (${player.score + 'đ'})`;
+      }
+    }
+
+    return { amount, type, description, result };
+  }
+
   static calculateResult(player: Player, dealer: Player): { result: 'win' | 'lose' | 'draw', multiplier: number, specialHand: string | null } {
     const playerSpecial = Hand.checkSpecialHands(player);
     const dealerSpecial = Hand.checkSpecialHands(dealer);
@@ -210,6 +259,9 @@ export class XiDachEngine {
       if (dealerSpecial === 'ngu_linh') result = 'draw';
       else { result = 'win'; multiplier = 2; specialHand = 'Ngũ Linh'; }
     } else if (dealerSpecial === 'ngu_linh') {
+      result = 'lose';
+    } else if (player.score < 16 && !playerSpecial) {
+      // Chưa đủ tuổi: Thua luôn (trừ khi có bộ bài đặc biệt)
       result = 'lose';
     } else if (player.score > 21) {
       if (dealerScore > 21) result = 'draw';

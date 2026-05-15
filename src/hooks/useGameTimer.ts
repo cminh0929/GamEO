@@ -38,17 +38,14 @@ export function useGameTimer({ gameState, profile, stand, isBlocked = false }: U
   // Idle timer (auto-reset if dealer is away)
   useEffect(() => {
     if (gameState.dealer.id === '') {
-      setIdleTimeLeft(120);
+      setIdleTimeLeft(60);
       return;
     }
     const timer = setInterval(() => {
       const now = Date.now();
-      // Use 120s threshold and a small grace period for clock drift
       const diff = Math.floor((now - (gameState.lastActionAt || now)) / 1000);
-      const remaining = 120 - diff;
+      const remaining = 60 - diff;
       
-      // If diff is negative (dealer clock is in the future), remaining will be > 120, which is safe.
-      // If diff is slightly positive due to clock drift, it won't hit 0 immediately.
       setIdleTimeLeft(remaining <= 0 ? 0 : remaining);
     }, 1000);
     return () => clearInterval(timer);
