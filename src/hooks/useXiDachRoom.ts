@@ -21,6 +21,7 @@ const createEmptyState = (): GameState => ({
   })),
   status: 'ended',
   turnIndex: 0,
+  turnDeadline: 0,
   lastActionAt: Date.now(),
   processedTransactions: [],
 });

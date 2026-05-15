@@ -9,8 +9,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const ROOM_ID = 'gameo-table-1';
 const LOG_FILE = path.join(__dirname, 'logs', 'afk_test.log');
 
