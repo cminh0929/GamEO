@@ -1,6 +1,7 @@
 import './utils/load-env';
 import { createClient } from '@supabase/supabase-js';
 import { GameRoomService } from '../../src/lib/services/GameRoomService';
+import { GameState } from '../../src/types/game';
 import { XiDachEngine } from '../../src/lib/game/XiDachEngine';
 import { CLIFormatter } from './utils/formatter';
 import { Profile } from '../../src/types/platform';
@@ -26,11 +27,11 @@ async function runAutoGame() {
   console.log('\n🚀 ĐANG KHỞI CHẠY TEST TỰ ĐỘNG...');
   
   console.log('🧹 Đang làm sạch bàn...');
-  let state = {
-    deck: [],
-    dealer: { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing' as const, balance: 0, currentBet: 0 },
+  let state: GameState = {
+    deck: [] as any,
+    dealer: { id: '', name: 'Nhà Cái', hand: [] as any, score: 0, status: 'playing' as const, balance: 0, currentBet: 0 },
     players: Array.from({ length: 7 }, (_, i) => ({
-      id: '', name: `Vị trí ${i + 1}`, hand: [], score: 0, status: 'playing' as const,
+      id: '', name: `Vị trí ${i + 1}`, hand: [] as any, score: 0, status: 'playing' as const,
       isChecked: false, gameResult: null as any, balance: 0, currentBet: 0,
     })),
     status: 'ended' as any,

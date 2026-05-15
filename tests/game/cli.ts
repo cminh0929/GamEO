@@ -3,6 +3,7 @@ import * as readline from 'readline';
 import { createClient } from '@supabase/supabase-js';
 import { GameRoomService } from '../../src/lib/services/GameRoomService';
 import { XiDachEngine } from '../../src/lib/game/XiDachEngine';
+import { GameState } from '../../src/types/game';
 import { CLIFormatter } from './utils/formatter';
 import { Profile } from '../../src/types/platform';
 
@@ -31,7 +32,7 @@ const rl = readline.createInterface({
 
 async function main() {
   console.log('Đang kết nối Supabase...');
-  let state = await GameRoomService.fetchGameState(ROOM_ID);
+  let state: GameState | null = await GameRoomService.fetchGameState(ROOM_ID);
   
   if (!state) {
     console.error('Không thể lấy trạng thái bàn chơi!');
@@ -40,7 +41,7 @@ async function main() {
 
   supabase
     .channel(ROOM_ID)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'game_rooms', filter: `id=eq.${ROOM_ID}` }, payload => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'game_rooms', filter: `id=eq.${ROOM_ID}` }, (payload: any) => {
       state = payload.new.game_state;
       CLIFormatter.render(state!, MOCK_PROFILE.id);
     })
@@ -54,7 +55,7 @@ async function main() {
       
       try {
         const engine = new XiDachEngine(state!);
-        let newState = null;
+        let newState: GameState | null = null;
 
         switch (cmd) {
           case 'sit':
