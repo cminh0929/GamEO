@@ -20,54 +20,45 @@ export class FinanceService {
   ): Promise<void> {
     if (!userId) return;
 
-    // Atomic RPC: avoids SELECT→UPDATE race condition when concurrent transactions occur
+    // Atomic RPC: xử lý cả update balance và insert log trong 1 transaction ở DB
+    // SECURITY DEFINER giúp Dealer có quyền update/log cho Player mà không bị RLS chặn
     const { error: rpcError } = await supabase.rpc('update_balance', {
       p_user_id: userId,
       p_amount: amount,
+      p_type: type,
+      p_description: description,
     });
 
     if (rpcError) {
-      // Fallback: RPC not yet deployed — use non-atomic path
-      console.warn('update_balance RPC unavailable, falling back:', rpcError.message);
+      // Fallback: Nếu RPC mới (4 params) chưa được deploy, thử dùng RPC cũ hoặc manual path
+      console.warn('Atomic RPC failed, trying fallback path:', rpcError.message);
+      
       const { data: currentProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('balance')
         .eq('id', userId)
         .maybeSingle();
 
-      if (fetchError || !currentProfile) throw new Error('Profile not found for user: ' + userId);
+      if (fetchError || !currentProfile) {
+        throw new Error(`Giao dịch thất bại: Không tìm thấy profile user ${userId}`);
+      }
 
-      // Floor at 0: game logic already caps penalty, this is a DB-level safety net
       const newBalance = Math.max(0, (currentProfile.balance || 0) + amount);
-
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ balance: newBalance })
         .eq('id', userId);
 
-      if (updateError) throw updateError;
-    }
+      if (updateError) throw new Error(`Lỗi cập nhật số dư: ${updateError.message}`);
 
-    // Ghi log giao dịch — BẮt buộc: không được để tiền di chuyển mà không có dấu vết
-    const { error: logError } = await supabase
-      .from('transaction_logs')
-      .insert({ user_id: userId, amount, type, description });
-
-    if (logError) {
-      // Retry 1 lần trước khi từ bỏ
-      console.warn('Transaction log failed, retrying...', logError.message);
-      const { error: retryError } = await supabase
+      // Manual log fallback (vẫn có nguy cơ bị RLS chặn nếu Dealer làm cho Player)
+      const { error: logError } = await supabase
         .from('transaction_logs')
-        .insert({ user_id: userId, amount, type, description: `[RETRY] ${description}` });
-
-      if (retryError) {
-        // Ghi marker lỗi để admin biết có giao dịch thiếu log
-        console.error('Transaction log PERMANENTLY failed — money moved without trace!', retryError.message);
-        await supabase.from('transaction_logs').insert({
-          user_id: userId, amount, type: 'log_error',
-          description: `[LOG_FAILED] ${description} | err: ${retryError.message}`,
-        }).then(); // fire-and-forget, mức đích chỉ là alert admin
-        throw new Error(`Critical: transaction executed but log failed for user ${userId}: ${retryError.message}`);
+        .insert({ user_id: userId, amount, type, description });
+      
+      if (logError) {
+        console.error('Manual log failed (likely RLS):', logError.message);
+        throw new Error(`Giao dịch thành công nhưng không thể ghi log: ${logError.message}`);
       }
     }
   }
