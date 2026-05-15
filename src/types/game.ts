@@ -30,8 +30,8 @@ export interface GameState {
   players: Player[];
   status: GameStatus;
   turnIndex: number; // Index of current player
-  turnDeadline?: number; // Timestamp khi hết lượt
-  lastActionAt?: number; // Mốc thời gian hành động cuối cùng
+  turnDeadline: number; // Timestamp khi hết lượt
+  lastActionAt: number; // Mốc thời gian hành động cuối cùng
   processedTransactions?: string[]; // Lưu vết ID các giao dịch đã thực hiện để tránh lặp
   roundId?: string; // ID duy nhất của ván bài để chống trùng giao dịch
 }
