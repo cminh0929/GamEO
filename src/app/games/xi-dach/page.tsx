@@ -60,7 +60,7 @@ function XiDachGame() {
   const { timeLeft, idleTimeLeft } = useGameTimer({
     gameState,
     profile,
-    stand: actions.stand,
+    stand: actions.autoAction,
     isBlocked,
   });
 

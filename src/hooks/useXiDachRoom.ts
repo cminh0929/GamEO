@@ -340,6 +340,30 @@ export function useXiDachRoom(
     updateRemoteState(newState);
   }, [updateRemoteState]);
 
+  const autoAction = useCallback(async (idx: number) => {
+    const gs = gameStateRef.current;
+    if (gs.turnIndex !== idx) return;
+    
+    const player = gs.players[idx];
+    const score = Hand.calculateScore(player.hand);
+    const special = Hand.checkSpecialHands(player);
+    const isSpecial = special === 'xi_bang' || special === 'xi_dach' || special === 'ngu_linh';
+
+    // Nếu chưa đủ tuổi và chưa đủ 5 lá, tự động Rút (Hit)
+    if (!isSpecial && score < 16 && player.hand.length < 5) {
+      console.log('[autoAction] Under 16 points, performing Auto-Hit');
+      const engine = new XiDachEngine(gs);
+      const newState = engine.hit(idx);
+      updateRemoteState(newState);
+    } else {
+      // Đã đủ tuổi hoặc đạt giới hạn bài, tự động Dừng (Stand)
+      console.log('[autoAction] Sufficient score or special hand, performing Auto-Stand');
+      const engine = new XiDachEngine(gs);
+      const newState = engine.stand(idx);
+      updateRemoteState(newState);
+    }
+  }, [updateRemoteState]);
+
   const stand = useCallback(async (idxOrAuto: number | boolean = false) => {
     const gs = gameStateRef.current;
     const isAuto = typeof idxOrAuto === 'number' || idxOrAuto === true;
@@ -402,6 +426,7 @@ export function useXiDachRoom(
       checkAllPlayers,
       dealerHit,
       resetTableToEmpty,
+      autoAction,
     },
   };
 }
