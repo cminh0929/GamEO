@@ -225,9 +225,9 @@ export class XiDachEngine {
         type = 'win';
         description = `Thắng ván bài (${res.specialHand || player.score + 'đ'}) x${res.multiplier}`;
       } else if (res.result === 'lose') {
-        amount = -bet;
+        amount = -bet * res.multiplier;
         type = 'lose';
-        description = `Thua ván bài (${player.score + 'đ'})`;
+        description = `Thua ván bài (${res.specialHand || player.score + 'đ'}) x${res.multiplier}`;
       } else {
         description = `Hòa ván bài (${player.score + 'đ'})`;
       }
@@ -249,17 +249,17 @@ export class XiDachEngine {
       if (dealerSpecial === 'xi_bang') result = 'draw';
       else { result = 'win'; multiplier = 4; specialHand = 'Xì Bàng'; }
     } else if (dealerSpecial === 'xi_bang') {
-      result = 'lose';
+      result = 'lose'; multiplier = 4; specialHand = 'Nhà Cái Xì Bàng';
     } else if (playerSpecial === 'xi_dach') {
       if (dealerSpecial === 'xi_dach') result = 'draw';
       else { result = 'win'; multiplier = 3; specialHand = 'Xì Dách'; }
     } else if (dealerSpecial === 'xi_dach') {
-      result = 'lose';
+      result = 'lose'; multiplier = 3; specialHand = 'Nhà Cái Xì Dách';
     } else if (playerSpecial === 'ngu_linh') {
       if (dealerSpecial === 'ngu_linh') result = 'draw';
       else { result = 'win'; multiplier = 2; specialHand = 'Ngũ Linh'; }
     } else if (dealerSpecial === 'ngu_linh') {
-      result = 'lose';
+      result = 'lose'; multiplier = 2; specialHand = 'Nhà Cái Ngũ Linh';
     } else if (player.score < 16 && !playerSpecial) {
       // Chưa đủ tuổi: Thua luôn (trừ khi có bộ bài đặc biệt)
       result = 'lose';

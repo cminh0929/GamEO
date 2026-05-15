@@ -46,17 +46,10 @@ export function useXiDachRoom(
     });
 
     const channel = GameRoomService.subscribeToRoom(ROOM_ID, (state) => {
-      // Only update if the received state is newer than current (using lastActionAt)
-      // This prevents late-arriving events from overwriting local optimistic updates
-      if (!gameStateRef.current.lastActionAt || (state.lastActionAt && state.lastActionAt > gameStateRef.current.lastActionAt)) {
-        setGameState(state);
-        gameStateRef.current = state;
-      } else if (state.lastActionAt === gameStateRef.current.lastActionAt) {
-        // Same timestamp, but could be different content if multiple updates happened in same ms
-        // (Unlikely but possible). We update anyway to be safe if it's not our local state.
-        setGameState(state);
-        gameStateRef.current = state;
-      }
+      // Cập nhật ngay lập tức để đảm bảo đồng bộ, 
+      // bỏ qua kiểm tra timestamp khắt khe để tránh lỗi lệch đồng hồ máy tính
+      setGameState(state);
+      gameStateRef.current = state;
     });
     return () => { supabase.removeChannel(channel); };
   }, []);

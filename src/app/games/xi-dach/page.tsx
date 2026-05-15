@@ -105,17 +105,16 @@ function XiDachGame() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  // ── Idle auto-kick: khi dealer vắng mặt quá 60s, người chơi đầu tiên reset bàn ──
+  // ── Idle auto-kick: khi dealer vắng mặt quá 60s, tự động reset bàn ──
   useEffect(() => {
     if (idleTimeLeft !== 0) return;
     if (!profile) return;
-    if (gameState.dealer.id === '') return;
-    if (gameState.dealer.id === profile.id) return; // dealer tự kỳ nên kông tự kick
-    // Chỉ cho 1 client trigger (người chơi ở vị trí 0 hoặc player đầu tiên)
-    const firstSeated = gameState.players.find((p) => p.id !== '');
-    if (firstSeated?.id !== profile.id) return;
+    if (gameState.dealer.id === '') return; // Bàn đã trống rồi
+    if (gameState.dealer.id === profile.id) return; // Dealer không tự reset chính mình
+    
+    // Bất kỳ ai thấy hết giờ đều có quyền gửi lệnh reset để đảm bảo bàn không bị kẹt
     actions.resetTableToEmpty();
-  }, [idleTimeLeft, profile, gameState.dealer.id, gameState.players, actions]);
+  }, [idleTimeLeft, profile, gameState.dealer.id, actions]);
 
   // ── Blocked tab overlay ──────────────────────────────────────────────────
   if (isBlocked) return <BlockedTabScreen />;

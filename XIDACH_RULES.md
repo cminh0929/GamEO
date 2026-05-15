@@ -26,6 +26,7 @@ Từ cao xuống thấp:
 ### Đối với Nhà cái:
 -   **Quyền Xét bài**: Nhà cái phải đạt tối thiểu **15 điểm** hoặc đã rút đủ **5 lá bài** mới được quyền Xét (Check) người chơi.
 -   **Tự động Reset (Idle)**: Nếu Nhà cái vắng mặt hoặc không thao tác quá **60 giây**, hệ thống sẽ tự động làm trống vị trí Nhà cái và reset bàn chơi để tránh bị kẹt.
+-   **Thắng bộ đặc biệt**: Nếu Nhà cái thắng bằng bộ đặc biệt, người chơi phải trả tiền theo hệ số tương ứng (**x4 cho Xì Bàng, x3 cho Xì Dách, x2 cho Ngũ Linh**).
 -   **Thắng ngay (Instant Win)**: Nếu Nhà cái có Xì Bàng hoặc Xì Dách sau khi chia 2 lá đầu, ván bài kết thúc ngay và Nhà cái thắng tất cả người chơi (trừ người có bộ tương đương).
 
 ## 4. Quy tắc Thanh toán (Settlement)
