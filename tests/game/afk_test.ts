@@ -21,11 +21,11 @@ function logToFile(msg: string) {
   fs.appendFileSync(LOG_FILE, formattedMsg);
 }
 
-const DEALER: Profile = { 
-  id: '00000000-0000-4000-a000-000000000000', 
-  username: 'Bot Dealer 👑', 
-  balance: 10000000, 
-  avatar_url: null 
+const DEALER: Profile = {
+  id: '00000000-0000-4000-a000-000000000000',
+  username: 'Bot Dealer 👑',
+  balance: 10000000,
+  avatar_url: null
 };
 
 const PLAYERS: Profile[] = Array.from({ length: 7 }, (_, i) => ({
@@ -39,9 +39,20 @@ async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function processSettlement(userId: string, amount: number, type: string, description: string) {
+  const { error } = await supabase.rpc('update_balance_v2', {
+    p_user_id: userId,
+    p_amount: amount,
+    p_type: type,
+    p_description: description
+  });
+  if (error) logToFile(`❌ Lỗi cập nhật tiền cho ${userId}: ${error.message}`);
+  else logToFile(`✅ Đã cập nhật ${amount > 0 ? '+' : ''}${amount} cho ${userId} (${type})`);
+}
+
 async function runAFKTest() {
   logToFile('🚀 BẮT ĐẦU TEST AFK...');
-  
+
   logToFile('🧹 Đang làm sạch bàn...');
   let state: GameState = {
     deck: [] as any,
@@ -59,7 +70,7 @@ async function runAFKTest() {
 
   logToFile('👥 Bots đang vào bàn...');
   let engine = new XiDachEngine(state);
-  
+
   const { data: dData } = await supabase.from('profiles').select('*').eq('id', DEALER.id).single();
   state = engine.takeRole('dealer', dData || DEALER);
 
@@ -74,11 +85,18 @@ async function runAFKTest() {
   state = engine.startNewGame(); // Betting
   for (let i = 0; i < 7; i++) {
     state = engine.placeBet(i, 10000);
+    await processSettlement(PLAYERS[i].id, -10000, 'bet', `Bet for room ${ROOM_ID}`);
   }
   state = engine.startNewGame(); // Playing
   await GameRoomService.updateGameState(ROOM_ID, state);
-  
+
   const activeIdx = state.turnIndex;
+  if (activeIdx === -1) {
+    logToFile('⚠️ Ván bài đã kết thúc ngay lập tức (có thể do Xì Bàng/Xì Dách). Không thể test AFK.');
+    logToFile('🏁 KẾT THÚC TEST AFK.');
+    return;
+  }
+
   const afkPlayer = state.players[activeIdx];
   logToFile(`⚠️ ĐẾN LƯỢT ${afkPlayer.name}. BOT SẼ AFK TRONG 40 GIÂY...`);
   logToFile(`⏰ Turn Deadline: ${new Date(state.turnDeadline).toLocaleTimeString()}`);
@@ -91,18 +109,29 @@ async function runAFKTest() {
 
   logToFile('🔍 Kiểm tra trạng thái bàn sau AFK...');
   state = await GameRoomService.fetchGameState(ROOM_ID) as GameState;
-  
+
   if (state.turnIndex !== activeIdx) {
-    logToFile(`✅ THÀNH CÔNG: Lượt đã chuyển từ ${activeIdx} sang ${state.turnIndex}. AFK Logic đã hoạt động.`);
-    const prevPlayer = state.players[activeIdx];
-    if (prevPlayer.status === 'stay') {
-      logToFile(`📝 Kết quả: Player đã được hệ thống cho Auto-Stand.`);
-    } else if (prevPlayer.id === '') {
-      logToFile(`📝 Kết quả: Player đã bị hệ thống Kick (nếu Offline).`);
+    logToFile(`✅ THÀNH CÔNG: Lượt đã chuyển từ ${activeIdx} sang ${state.turnIndex}.`);
+    
+    logToFile('⚖️ Đang thực hiện quyết toán THẬT vào Database...');
+    const totalTableBets = state.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
+    let totalDealerDelta = 0;
+
+    for (let i = 0; i < state.players.length; i++) {
+      const p = state.players[i];
+      if (p.id && !p.isChecked) {
+        const settlement = XiDachEngine.calculatePlayerSettlement(p, state.dealer, totalTableBets);
+        await processSettlement(p.id, settlement.amount, settlement.type, `Settlement for room ${ROOM_ID} (AFK Test)`);
+        totalDealerDelta -= settlement.amount;
+      }
     }
+    
+    if (DEALER.id && totalDealerDelta !== 0) {
+      await processSettlement(DEALER.id, totalDealerDelta, totalDealerDelta > 0 ? 'win' : 'lose', `Total dealer settlement for room ${ROOM_ID}`);
+    }
+    logToFile('✅ Quyết toán hoàn tất.');
   } else {
     logToFile(`❌ THẤT BẠI: Lượt vẫn đang ở ${activeIdx}. AFK Logic KHÔNG hoạt động.`);
-    logToFile('💡 Gợi ý: Hãy đảm bảo bạn đang mở trình duyệt ở bàn chơi này để xử lý AFK.');
   }
 
   logToFile('🏁 KẾT THÚC TEST AFK.');
