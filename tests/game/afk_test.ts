@@ -63,6 +63,7 @@ async function runAFKTest() {
     })),
     status: 'ended' as any,
     turnIndex: 0,
+    turnDeadline: 0,
     lastActionAt: Date.now(),
   };
   await GameRoomService.updateGameState(ROOM_ID, state);
