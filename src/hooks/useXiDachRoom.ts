@@ -8,6 +8,7 @@ import { XiDachEngine } from '../lib/game/XiDachEngine';
 import { supabase } from '../lib/supabase';
 import type { GameState, GameStatus, CardType } from '../types/game';
 import type { Profile } from '../types/platform';
+import type { PresenceUser } from './useSpectators';
 
 const ROOM_ID = 'gameo-table-1';
 
@@ -420,26 +421,40 @@ export function useXiDachRoom(
 
   const refundAllPlayers = useCallback(async (gs: GameState) => {
     if (!gs.dealer.id) return;
+    const processedTx = gs.processedTransactions || [];
+    const roundKey = gs.roundId || `reset-${gs.lastActionAt || 0}`;
+    let hasChanged = false;
+
     for (const player of gs.players) {
       if (player.id && player.currentBet > 0) {
+        const txId = `refund-${player.id}-${roundKey}`;
+        if (processedTx.includes(txId)) continue; // Đã refund rồi thì bỏ qua
+
         try {
-          console.log(`[refundAllPlayers] Refunding ${player.currentBet} to ${player.name}`);
-          // Dealer pays back to player
+          console.log(`[refundAllPlayers] Refunding ${player.currentBet} to ${player.name} (txId: ${txId})`);
           await executeTransaction(player.id, player.currentBet, 'refund', 'Nhà Cái vắng mặt — Hoàn trả tiền cược');
           await executeTransaction(gs.dealer.id, -player.currentBet, 'refund', `Hoàn trả tiền cược cho ${player.name}`);
+          processedTx.push(txId);
+          hasChanged = true;
         } catch (err) {
           console.error('[refundAllPlayers] Failed to refund player', player.id, err);
         }
       }
     }
-  }, [executeTransaction]);
+
+    if (hasChanged) {
+      // Cập nhật lại state với danh sách tx đã xử lý để các client khác biết
+      await updateRemoteState({ ...gs, processedTransactions: processedTx });
+    }
+  }, [executeTransaction, updateRemoteState]);
 
   const handleDealerAFK = useCallback(async () => {
     const gs = gameStateRef.current;
     if (gs.dealer.id === '') return;
 
     if (gs.status === 'ended') {
-      console.log('[handleDealerAFK] Phase: ended. Resetting table.');
+      console.log('[handleDealerAFK] Phase: ended. Ensuring settlement before reset.');
+      await checkAllPlayers(); // Quyết toán tiền nong cho tất cả trước khi dọn bàn
       await resetTableToEmpty();
     } else if (gs.status === 'betting') {
       console.log('[handleDealerAFK] Phase: betting. Refunding and resetting.');
@@ -462,6 +477,46 @@ export function useXiDachRoom(
     }
   }, [resetTableToEmpty, refundAllPlayers, checkAllPlayers, dealerHit]);
 
+  const handlePlayerAFK = useCallback(async (idx: number, allPresent: PresenceUser[]) => {
+    const gs = gameStateRef.current;
+    if (gs.turnIndex !== idx) return;
+    
+    const player = gs.players[idx];
+    if (!player.id) return;
+
+    const isOffline = !allPresent.some(u => u.id === player.id);
+    const processedTx = gs.processedTransactions || [];
+    const roundKey = gs.roundId || `afk-${gs.lastActionAt || 0}`;
+    const penaltyTxId = `penalty-${player.id}-${roundKey}`;
+
+    if (isOffline && gs.status === 'playing' && player.hand.length > 0 && !player.isChecked && !processedTx.includes(penaltyTxId)) {
+      console.log(`[handlePlayerAFK] Player ${player.name} is OFFLINE (txId: ${penaltyTxId}). Penalizing Rage Quit.`);
+      const bet = player.currentBet;
+      try {
+        await executeTransaction(player.id, -bet, 'penalty', 'Phạt thoát ván bài (AFK Offline)');
+        if (gs.dealer.id) {
+          await executeTransaction(gs.dealer.id, bet, 'win', `Nhà Cái hưởng tiền từ ${player.name} AFK`);
+        }
+        
+        // Mark as processed
+        processedTx.push(penaltyTxId);
+
+        // Kick player and advance turn
+        const engine = new XiDachEngine(gs);
+        let newState = engine.kickPlayer(idx);
+        // Sau khi kích, cần chuyển lượt vì đang là lượt của họ
+        const nextState = getNextTurnState(newState);
+        updateRemoteState({ ...nextState, processedTransactions: processedTx });
+      } catch (err) {
+        console.error('[handlePlayerAFK] Penalty transaction failed:', err);
+      }
+    } else {
+      // Vẫn online: thực hiện autoAction bình thường (Hit/Stand)
+      console.log(`[handlePlayerAFK] Player ${player.name} is online. Performing normal Auto-Action.`);
+      await autoAction(idx);
+    }
+  }, [executeTransaction, autoAction, updateRemoteState, getNextTurnState]);
+
   return {
     gameState,
     actions: {
@@ -478,6 +533,7 @@ export function useXiDachRoom(
       resetTableToEmpty,
       autoAction,
       handleDealerAFK,
+      handlePlayerAFK,
     },
   };
 }

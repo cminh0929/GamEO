@@ -105,21 +105,65 @@ function XiDachGame() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  // ── Idle auto-kick: khi dealer vắng mặt quá 60s, tự động reset bàn ──
+  // ── Idle auto-kick & Player AFK handler ──
   useEffect(() => {
-    if (idleTimeLeft !== 0) return;
+    if (timeLeft > 0 && idleTimeLeft > 0) return;
     if (!profile) return;
-    if (gameState.dealer.id === '') return; // Bàn đã trống rồi
-    // Để tránh trùng lặp giao dịch Hoàn tiền, chỉ duy nhất 1 người trong phòng gửi lệnh xử lý AFK
-    const firstSeated = gameState.players.find((p) => p.id !== '');
-    const firstPresent = allPresent[0];
-    const triggerId = firstSeated ? firstSeated.id : (firstPresent?.id);
-    
-    if (triggerId === profile.id) {
-      console.log('[page] You are the designated AFK handler. Executing...');
-      actions.handleDealerAFK();
+
+    // 1. Xử lý Nhà Cái AFK (idleTimeLeft === 0)
+    if (idleTimeLeft === 0 && gameState.dealer.id !== '') {
+      // Ưu tiên chọn người đang Online (có trong allPresent) làm người xử lý
+      const firstOnlineSeated = gameState.players.find((p) => p.id !== '' && allPresent.some(u => u.id === p.id));
+      const firstSpectator = allPresent.find(u => u.id !== gameState.dealer.id && !gameState.players.some(p => p.id === u.id));
+      const triggerId = firstOnlineSeated ? firstOnlineSeated.id : (firstSpectator?.id || allPresent[0]?.id);
+      
+      if (triggerId === profile.id) {
+        console.log('[page] Bạn là người xử lý Nhà Cái AFK. Đang thực thi...');
+        actions.handleDealerAFK();
+      }
     }
-  }, [idleTimeLeft, profile, gameState.dealer.id, gameState.players, allPresent, actions]);
+
+    // 2. Xử lý Người chơi AFK hết lượt (timeLeft === 0)
+    if (timeLeft === 0 && gameState.status === 'playing' && gameState.turnIndex !== -1) {
+      const currentPlayer = gameState.players[gameState.turnIndex];
+      // Nếu người chơi AFK không phải là tôi, tôi có thể là "trọng tài" để thúc lượt của họ
+      if (currentPlayer && currentPlayer.id !== '' && currentPlayer.id !== profile.id) {
+        // Trọng tài ưu tiên: Nhà cái, nếu không có thì là người đầu tiên trong danh sách online
+        const triggerId = gameState.dealer.id || allPresent[0]?.id;
+        if (triggerId === profile.id) {
+          console.log(`[page] Bạn là trọng tài xử lý AFK cho Vị trí ${gameState.turnIndex + 1}.`);
+          actions.handlePlayerAFK(gameState.turnIndex, allPresent);
+        }
+      }
+    }
+  }, [timeLeft, idleTimeLeft, profile, gameState, allPresent, actions]);
+
+  // ── Betting Timeout: Tự động kick người chơi ngồi ghế mà không cược quá 60s ──
+  useEffect(() => {
+    if (gameState.status !== 'betting') return;
+    if (!profile) return;
+
+    const checkBettingAFK = () => {
+      const now = Date.now();
+      const idleLimit = 60000; // 60 giây
+      
+      // Chỉ Nhà cái hoặc Admin mới có quyền Kick người không cược
+      if (gameState.dealer.id !== profile.id && !isAdmin) return;
+
+      gameState.players.forEach((p, idx) => {
+        if (p.id !== '' && p.currentBet === 0) {
+          const timeSinceLastAction = now - (gameState.lastActionAt || now);
+          if (timeSinceLastAction > idleLimit) {
+            console.log(`[bettingAFK] Kicking player ${p.name} for not betting.`);
+            actions.kickPlayer(idx);
+          }
+        }
+      });
+    };
+
+    const interval = setInterval(checkBettingAFK, 5000);
+    return () => clearInterval(interval);
+  }, [gameState.status, gameState.players, gameState.dealer.id, gameState.lastActionAt, profile, isAdmin, actions]);
 
   // ── Blocked tab overlay ──────────────────────────────────────────────────
   if (isBlocked) return <BlockedTabScreen />;
