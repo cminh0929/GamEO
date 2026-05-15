@@ -358,13 +358,13 @@ export function useXiDachRoom(
 
     // Nếu chưa đủ tuổi và chưa đủ 5 lá, tự động Rút (Hit)
     if (!isSpecial && score < 16 && player.hand.length < 5) {
-      console.log('[autoAction] Under 16 points, performing Auto-Hit');
+      console.log(`[autoAction] Player ${player.name} AFK (score < 16), performing Auto-Hit`);
       const engine = new XiDachEngine(gs);
       const newState = engine.hit(idx);
       updateRemoteState(newState);
     } else {
       // Đã đủ tuổi hoặc đạt giới hạn bài, tự động Dừng (Stand)
-      console.log('[autoAction] Sufficient score or special hand, performing Auto-Stand');
+      console.log(`[autoAction] Player ${player.name} AFK (sufficient/max), performing Auto-Stand`);
       const engine = new XiDachEngine(gs);
       const newState = engine.stand(idx);
       updateRemoteState(newState);
@@ -502,7 +502,7 @@ export function useXiDachRoom(
       try {
         await executeTransaction(player.id, -bet, 'penalty', 'Phạt thoát ván bài (AFK Offline)');
         if (gs.dealer.id) {
-          await executeTransaction(gs.dealer.id, bet, 'win', `Nhà Cái hưởng tiền từ ${player.name} AFK`);
+          await executeTransaction(gs.dealer.id, bet, 'win', `Nhà Cái hưởng tiền phạt từ ${player.name} (AFK)`);
         }
         
         // Mark as processed
