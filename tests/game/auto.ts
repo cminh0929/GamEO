@@ -13,18 +13,19 @@ const ROOM_ID = 'gameo-table-1';
 
 // Mocks
 const DEALER: Profile = { id: 'bot-dealer', username: 'Bot Dealer', balance: 10000000, avatar_url: null };
-const PLAYERS: Profile[] = [
-  { id: 'bot-1', username: 'Bot Player 1', balance: 500000, avatar_url: null },
-  { id: 'bot-2', username: 'Bot Player 2', balance: 500000, avatar_url: null },
-  { id: 'bot-3', username: 'Bot Player 3', balance: 500000, avatar_url: null },
-];
+const PLAYERS: Profile[] = Array.from({ length: 7 }, (_, i) => ({
+  id: `bot-${i + 1}`,
+  username: `Bot Player ${i + 1}`,
+  balance: 1000000,
+  avatar_url: null
+}));
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function runAutoGame() {
-  console.log('\n🚀 ĐANG KHỞI CHẠY TEST TỰ ĐỘNG...');
+  console.log('\n🚀 ĐANG KHỞI CHẠY TEST TỰ ĐỘNG VỚI 7 BOTS...');
   
   console.log('🧹 Đang làm sạch bàn...');
   let state: GameState = {
@@ -41,23 +42,26 @@ async function runAutoGame() {
   await GameRoomService.updateGameState(ROOM_ID, state);
   await delay(1000);
 
-  console.log('👥 Bots đang vào bàn...');
+  console.log('👥 7 Bots đang vào bàn...');
   let engine = new XiDachEngine(state);
   state = engine.takeRole('dealer', DEALER);
-  state = engine.takeRole('player', PLAYERS[0], 0);
-  state = engine.takeRole('player', PLAYERS[1], 2);
-  state = engine.takeRole('player', PLAYERS[2], 5);
+  // Cho 7 bots vào đủ 7 chỗ
+  for (let i = 0; i < 7; i++) {
+    state = engine.takeRole('player', PLAYERS[i], i);
+  }
   await GameRoomService.updateGameState(ROOM_ID, state);
   CLIFormatter.render(state, 'bot-dealer');
   await delay(1000);
 
-  console.log('🃏 Bắt đầu đặt cược và chia bài...');
+  console.log('🃏 Bắt đầu đặt cược cho 7 bots và chia bài...');
   engine = new XiDachEngine(state);
-  state = engine.startNewGame();
-  state = engine.placeBet(0, 10000);
-  state = engine.placeBet(2, 20000);
-  state = engine.placeBet(5, 50000);
-  state = engine.startNewGame();
+  state = engine.startNewGame(); // Chuyển sang betting
+  // Đặt cược ngẫu nhiên cho 7 bots
+  for (let i = 0; i < 7; i++) {
+    const randomBet = (Math.floor(Math.random() * 5) + 1) * 10000; // 10k - 50k
+    state = engine.placeBet(i, randomBet);
+  }
+  state = engine.startNewGame(); // Chia bài
   await GameRoomService.updateGameState(ROOM_ID, state);
   CLIFormatter.render(state, 'bot-dealer');
   await delay(2000);

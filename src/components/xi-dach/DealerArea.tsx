@@ -21,12 +21,30 @@ interface DealerAreaProps {
 export function DealerArea({
   dealer, gameState, profile, chatBubble, onDealerHit, onResetTable, onTakeDealer, onKick, isAdmin,
 }: DealerAreaProps) {
+  const [anim, setAnim] = React.useState<{ amount: number; key: number } | null>(null);
+  const prevBalance = React.useRef(dealer.balance);
+
+  React.useEffect(() => {
+    const diff = dealer.balance - prevBalance.current;
+    if (diff !== 0 && dealer.id !== '') {
+      setAnim({ amount: diff, key: Date.now() });
+      setTimeout(() => setAnim(null), 1500);
+    }
+    prevBalance.current = dealer.balance;
+  }, [dealer.balance]);
+
   const isDealer = dealer.id === profile?.id;
   const isMeChecked = gameState.players.some((p) => p.id === profile?.id && p.isChecked);
   const notSeated = !gameState.players.some((p) => p.id === profile?.id) && dealer.id !== profile?.id;
 
   return (
     <div className="dealer-area">
+      {/* Money Animation */}
+      {anim && (
+        <div key={anim.key} className={`money-anim ${anim.amount > 0 ? 'plus' : 'minus'}`}>
+          {anim.amount > 0 ? `+${anim.amount.toLocaleString()}` : anim.amount.toLocaleString()}
+        </div>
+      )}
       {/* Dealer speech bubble */}
       {chatBubble && dealer.id !== '' && (
         <div className="seat-bubble dealer-bubble">{chatBubble}</div>
@@ -35,12 +53,10 @@ export function DealerArea({
         {dealer.avatarUrl && (
           <img src={dealer.avatarUrl} alt="Dealer" className="dealer-avatar" />
         )}
-        <span className={dealer.id ? 'dealer-name' : 'dealer-name empty'}>
-          {dealer.id ? dealer.name : 'ĐANG TRỐNG'}
-        </span>
         {dealer.id ? (
           <>
             <span className="dealer-balance">${(dealer.balance ?? 0).toLocaleString()}</span>
+            <span className="dealer-name">{dealer.name}</span>
             {isAdmin && dealer.id !== profile?.id && (
               <button
                 className="btn-kick dealer-kick"
@@ -51,11 +67,14 @@ export function DealerArea({
             )}
           </>
         ) : (
-          notSeated && (
-            <button className="btn-sit dealer" onClick={onTakeDealer}>
-              LÀM NHÀ CÁI 👑
-            </button>
-          )
+          <>
+            <span className="dealer-name empty">ĐANG TRỐNG</span>
+            {notSeated && (
+              <button className="btn-sit dealer" onClick={onTakeDealer}>
+                LÀM NHÀ CÁI 👑
+              </button>
+            )}
+          </>
         )}
       </div>
 

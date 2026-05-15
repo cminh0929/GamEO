@@ -441,7 +441,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .dealer-avatar {
@@ -451,6 +451,7 @@ body {
   border: 3px solid var(--gold);
   box-shadow: 0 0 20px rgba(212,175,55,0.4);
   background: #111;
+  margin: 4px 0;
 }
 
 .dealer-name {
@@ -461,7 +462,9 @@ body {
 
 .dealer-balance {
   color: #2ecc71;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
 }
 
 /* NGƯỜI CHƠI (Tọa độ Oval - Đã tối ưu) */
@@ -478,6 +481,50 @@ body {
   flex-direction: column;
   gap: 5px;
   box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+}
+
+.player-info-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-box .balance {
+  color: #2ecc71;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.player-box.is-bottom .player-header {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.player-box.is-bottom .balance {
+  text-align: left;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-header.bottom {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.header-actions.top {
+  margin-bottom: 4px;
 }
 
 .player-box.active-turn {
@@ -1284,6 +1331,50 @@ body {
 .chat-send:hover { background: rgba(46,204,113,0.35); }
 
 /* ============================================================
+   MONEY ANIMATION
+   ============================================================ */
+@keyframes money-float {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1.2);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-40px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.8);
+  }
+}
+
+.money-anim {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: 900;
+  font-size: 1.5rem;
+  pointer-events: none;
+  z-index: 1000;
+  animation: money-float 1.5s ease-out forwards;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.5);
+}
+
+.money-anim.plus {
+  color: #2ecc71;
+}
+
+.money-anim.minus {
+  color: #ff4757;
+}
+
+/* ============================================================
    SEAT SPEECH BUBBLE
    ============================================================ */
 @keyframes bubble-pop {
@@ -1318,6 +1409,20 @@ body {
   border-radius: 14px 14px 2px 14px;
   bottom: auto;
   top: calc(100% + 6px);
+}
+
+.bottom-bubble {
+  bottom: auto;
+  top: calc(100% + 8px);
+  border-radius: 3px 16px 16px 16px;
+  animation: bubble-pop-bottom 4s ease forwards;
+}
+
+@keyframes bubble-pop-bottom {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.7) translateY(-4px); }
+  15%  { opacity: 1; transform: translateX(-50%) scale(1.05) translateY(0); }
+  85%  { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.9) translateY(4px); }
 }
 
 /* ── Float panel ── */
