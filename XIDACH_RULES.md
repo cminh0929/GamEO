@@ -19,28 +19,27 @@ Từ cao xuống thấp:
 ### Đối với Người chơi:
 -   **Đủ tuổi**: Phải đạt tối thiểu **16 điểm** mới được quyền Dừng (Stand) thủ công.
 -   **Auto-Action (Hết giờ)**: Nếu hết 30 giây người chơi không thao tác:
-    -   Nếu **dưới 16 điểm**: Hệ thống tự động **Rút bài (Hit)** cho đến khi đủ tuổi hoặc Quắc/5 lá.
-    -   Nếu **từ 16 điểm trở lên**: Hệ thống tự động **Dừng (Stand)**.
+    -   **Trường hợp Online**: Hệ thống tự động thực hiện hành động (Rút bài nếu < 16đ, Dừng bài nếu >= 16đ).
+    -   **Trường hợp Offline (Mất kết nối)**: Người chơi bị xử phạt **Rage Quit** (Xử thua ngay, trừ tiền cược) và bị Kick khỏi ghế ngay lập tức.
 -   **Quắc (Bust)**: Tổng điểm từ **22 đến 27**. Người chơi **không bị tự động Dừng** khi Quắc, có thể rút tiếp cho đến khi đủ 5 lá hoặc bị Đền.
 -   **Đền (Penalty)**: Tổng điểm **>= 28**. Người chơi bị xử thua ngay lập tức và trạng thái chuyển sang `den`.
 -   **Giới hạn**: Tối đa 5 lá bài.
 
 ### Đối với Nhà cái:
 -   **Quyền Xét bài**: Nhà cái phải đạt tối thiểu **15 điểm** hoặc đã rút đủ **5 lá bài** mới được quyền Xét (Check) người chơi.
--   **Tự động Reset (Idle)**: Nếu Nhà cái vắng mặt hoặc không thao tác quá **60 giây**, hệ thống sẽ tự động làm trống vị trí Nhà cái và reset bàn chơi để tránh bị kẹt.
+-   **Tự động Reset (Dealer AFK)**: Nếu Nhà cái vắng mặt hoặc không thao tác quá **60 giây**:
+    -   **Trong ván bài**: Hệ thống ép Nhà cái thực hiện hành động tự động (Rút bài hoặc Xét bài tất cả) để bảo vệ quyền lợi người chơi.
+    -   **Ngoài ván bài**: Hệ thống tự động hoàn tiền cược (nếu có) và xóa vị trí Nhà cái để người khác có thể lên thay thế.
 -   **Thắng bộ đặc biệt**: Nếu Nhà cái thắng bằng bộ đặc biệt, người chơi phải trả tiền theo hệ số tương ứng (**x4 cho Xì Bàng, x3 cho Xì Dách, x2 cho Ngũ Linh**).
--   **Thắng ngay (Instant Win)**: Nếu Nhà cái có Xì Bàng hoặc Xì Dách sau khi chia 2 lá đầu, ván bài kết thúc ngay và Nhà cái thắng tất cả người chơi (trừ người có bộ tương đương).
 
 ## 4. Quy tắc Thanh toán (Settlement)
 -   **Thắng/Thua thông thường**: Thưởng/Trừ đúng số tiền người chơi đã đặt cược.
--   **Thắng bộ đặc biệt**:
-    -   Thắng bằng **Xì Bàng**: Ăn x4 tiền cược.
-    -   Thắng bằng **Xì Dách**: Ăn x3 tiền cược.
-    -   Thắng bằng **Ngũ Linh**: Ăn x2 tiền cược.
+-   **Thắng bộ đặc biệt**: Thưởng theo hệ số tương ứng (x4, x3, x2).
+-   **Phạt Thoát ván (Rage Quit)**: Người chơi tự ý rời bàn hoặc mất kết nối quá thời gian khi đang trong ván bài sẽ bị xử thua và mất trắng số tiền đã cược cho Nhà cái.
 -   **Phạt Đền (Penalty >= 28đ)**: Người chơi bị phạt **tổng tiền cược của tất cả các cửa trên bàn**.
 -   **Trường hợp Hòa**: Không trừ tiền, ghi log giao dịch 0đ để minh bạch.
 
 ## 5. Tính minh bạch và Bảo mật (Integrity)
 -   **Round ID**: Mỗi ván bài có một mã định danh duy nhất.
--   **Idempotency**: Mọi giao dịch tiền tệ đều được kiểm tra mã vòng để đảm bảo không bị trừ tiền 2 lần (ngay cả khi mất kết nối mạng).
--   **Atomic RPC**: Tiền được trừ và Log được ghi cùng lúc trong một phiên làm việc duy nhất của Database.
+-   **Idempotency**: Mọi giao dịch tiền tệ đều được kiểm tra mã kiểm trùng (Mã vòng) để đảm bảo không bị trừ tiền nhiều lần cho cùng một sự kiện (ngay cả khi mạng chập chờn).
+-   **Atomic RPC**: Tiền được trừ và Log được ghi đồng thời thông qua các hàm Database tập trung.
