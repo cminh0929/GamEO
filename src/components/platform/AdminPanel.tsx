@@ -46,7 +46,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
-  useEffect(() => { loadProfiles(); }, [loadProfiles]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadProfiles();
+  }, [loadProfiles]);
 
   /* ── Drill-down into a user ── */
   const openUserFlow = useCallback(async (user: ProfileWithAnomaly) => {

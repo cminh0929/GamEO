@@ -27,6 +27,7 @@ export function ChatPanel({ messages, onSend, myId }: ChatPanelProps) {
   // Clear unread + scroll to bottom on open
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUnread(0);
       setTimeout(() => {
         listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });

@@ -48,11 +48,28 @@ export class FinanceService {
       if (updateError) throw updateError;
     }
 
-    // Log the transaction — non-critical, log but don't throw
+    // Ghi log giao dịch — BẮt buộc: không được để tiền di chuyển mà không có dấu vết
     const { error: logError } = await supabase
       .from('transaction_logs')
       .insert({ user_id: userId, amount, type, description });
-    if (logError) console.warn('Transaction log failed (non-critical):', logError.message);
+
+    if (logError) {
+      // Retry 1 lần trước khi từ bỏ
+      console.warn('Transaction log failed, retrying...', logError.message);
+      const { error: retryError } = await supabase
+        .from('transaction_logs')
+        .insert({ user_id: userId, amount, type, description: `[RETRY] ${description}` });
+
+      if (retryError) {
+        // Ghi marker lỗi để admin biết có giao dịch thiếu log
+        console.error('Transaction log PERMANENTLY failed — money moved without trace!', retryError.message);
+        await supabase.from('transaction_logs').insert({
+          user_id: userId, amount, type: 'log_error',
+          description: `[LOG_FAILED] ${description} | err: ${retryError.message}`,
+        }).then(); // fire-and-forget, mức đích chỉ là alert admin
+        throw new Error(`Critical: transaction executed but log failed for user ${userId}: ${retryError.message}`);
+      }
+    }
   }
 
   static async fetchProfile(userId: string) {

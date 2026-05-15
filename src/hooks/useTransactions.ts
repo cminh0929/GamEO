@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 import { FinanceService } from '../lib/services/FinanceService';
 import type { TransactionLog } from '../types/platform';
 
@@ -26,10 +27,31 @@ export function useTransactions(userId: string | undefined) {
     }
   }, [userId, refreshLogs]);
 
+  // Load logs on mount
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshLogs();
   }, [refreshLogs]);
+
+  // Realtime subscription: tự động refresh khi có giao dịch mới được ghi vào DB
+  // Kể cả khi dealer thực hiện giao dịch từ browser khác (player sẽ thấy ngay)
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`tx-realtime-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'transaction_logs',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => { refreshLogs(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, refreshLogs]);
 
   return { logs, executeTransaction, refreshLogs };
 }
