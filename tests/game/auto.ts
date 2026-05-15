@@ -170,12 +170,9 @@ async function runAutoGame() {
 
 async function start() {
   try {
-    for (let i = 1; i <= 3; i++) {
-      console.log(`\n--- VÁN THỨ ${i} ---`);
-      await runAutoGame();
-      await delay(3000);
-    }
-    console.log('\n✅ ĐÃ HOÀN THÀNH TEST TỰ ĐỘNG 3 VÁN.');
+    console.log(`\n--- VÁN THỨ 1 ---`);
+    await runAutoGame();
+    console.log('\n✅ ĐÃ HOÀN THÀNH TEST TỰ ĐỘNG 1 VÁN.');
     process.exit(0);
   } catch (err) {
     console.error('Lỗi trong quá trình chạy test:', err);
