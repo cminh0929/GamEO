@@ -429,12 +429,26 @@ body {
 /* Khu vực Nhà Cái */
 .dealer-area {
   position: absolute;
-  top: 15%;
+  bottom: 2%; /* Đưa xuống sát đáy bàn */
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 15px;
-  z-index: 10;
+  z-index: 100;
+  width: 180px;
+}
+
+.dealer-box {
+  background: rgba(15, 15, 15, 0.98);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 -5px 25px rgba(212, 175, 55, 0.4);
 }
 
 .dealer-info {
@@ -523,18 +537,27 @@ body {
   border-color: var(--gold);
 }
 
-/* Sắp xếp ghế theo hình vòng cung hướng lên (Nhà cái ở đáy) */
-.seat-0 { left: 5%; top: 55%; }   /* Giữa bên trái */
-.seat-1 { left: 12%; top: 25%; }  /* Trên bên trái */
-.seat-2 { left: 28%; top: 10%; }  /* Trên cùng trái */
-.seat-3 { left: 50%; top: 5%; }   /* Trên cùng chính giữa */
-.seat-4 { left: 72%; top: 10%; }  /* Trên cùng phải */
-.seat-5 { left: 88%; top: 25%; }  /* Trên bên phải */
-.seat-6 { left: 95%; top: 55%; }  /* Giữa bên phải */
+/* Sắp xếp ghế theo hình vòng cung bao quanh phía trên */
+.seat-0 { left: 8%;  top: 55%; }
+.seat-1 { left: 12%; top: 30%; }
+.seat-2 { left: 28%; top: 12%; }
+.seat-3 { left: 50%; top: 6%; }
+.seat-4 { left: 72%; top: 12%; }
+.seat-5 { left: 88%; top: 30%; }
+.seat-6 { left: 92%; top: 55%; }
+
+.dealer-hand {
+  margin-bottom: 10px; /* Khoảng cách với dealer-box bên dưới */
+  display: flex;
+  justify-content: center;
+  gap: -15px; /* Thẻ bài xếp chồng nhẹ */
+}
 
 .dealer-bubble {
-  bottom: 120%; /* Đẩy lên trên vì dealer ở dưới */
+  bottom: 110%; /* Nằm trên dealer-box */
   top: auto;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .current-turn-label {

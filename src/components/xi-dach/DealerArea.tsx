@@ -45,46 +45,50 @@ export function DealerArea({
           {anim.amount > 0 ? `+${anim.amount.toLocaleString()}` : anim.amount.toLocaleString()}
         </div>
       )}
-      {/* Dealer speech bubble */}
-      {chatBubble && dealer.id !== '' && (
-        <div className="seat-bubble dealer-bubble">{chatBubble}</div>
-      )}
-      <div className="dealer-info">
-        {dealer.avatarUrl && (
-          <img src={dealer.avatarUrl} alt="Dealer" className="dealer-avatar" />
-        )}
-        {dealer.id ? (
-          <>
-            <span className="dealer-balance">${(dealer.balance ?? 0).toLocaleString()}</span>
-            <span className="dealer-name">{dealer.name}</span>
-            {isAdmin && dealer.id !== profile?.id && (
-              <button
-                className="btn-kick dealer-kick"
-                onClick={(e) => { e.stopPropagation(); onKick('dealer'); }}
-                title="Admin Kick Dealer"
-                style={{ marginLeft: '8px', padding: '2px 6px', fontSize: '12px' }}
-              >❌</button>
-            )}
-          </>
-        ) : (
-          <>
-            <span className="dealer-name empty">ĐANG TRỐNG</span>
-            {notSeated && (
-              <button className="btn-sit dealer" onClick={onTakeDealer}>
-                LÀM NHÀ CÁI 👑
-              </button>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="hand">
+      
+      {/* Hand (Cards) - Now ABOVE Dealer Box */}
+      <div className="hand dealer-hand">
         {dealer.hand.map((card, i) => {
           const isVisible = isDealer || gameState.status === 'ended' || isMeChecked;
           return (
             <Card key={i} card={isVisible ? card : { ...card, isRevealed: false }} index={i} />
           );
         })}
+      </div>
+
+      <div className="dealer-box">
+        {/* Dealer speech bubble */}
+        {chatBubble && dealer.id !== '' && (
+          <div className="seat-bubble dealer-bubble">{chatBubble}</div>
+        )}
+        <div className="dealer-info">
+          {dealer.avatarUrl && (
+            <img src={dealer.avatarUrl} alt="Dealer" className="dealer-avatar" />
+          )}
+          {dealer.id ? (
+            <>
+              <span className="dealer-balance">${(dealer.balance ?? 0).toLocaleString()}</span>
+              <span className="dealer-name">{dealer.name}</span>
+              {isAdmin && dealer.id !== profile?.id && (
+                <button
+                  className="btn-kick dealer-kick"
+                  onClick={(e) => { e.stopPropagation(); onKick('dealer'); }}
+                  title="Admin Kick Dealer"
+                  style={{ marginLeft: '8px', padding: '2px 6px', fontSize: '12px' }}
+                >❌</button>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="dealer-name empty">ĐANG TRỐNG</span>
+              {notSeated && (
+                <button className="btn-sit dealer" onClick={onTakeDealer}>
+                  LÀM NHÀ CÁI 👑
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {isDealer && (
