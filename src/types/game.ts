@@ -16,7 +16,7 @@ export interface Player {
   name: string;
   hand: CardType[];
   score: number;
-  status: 'playing' | 'stay' | 'bust' | 'xi_dach' | 'xi_bang' | 'ngu_linh';
+  status: 'playing' | 'stay' | 'bust' | 'xi_dach' | 'xi_bang' | 'ngu_linh' | 'den';
   isChecked?: boolean;
   gameResult?: 'win' | 'lose' | 'draw' | null;
   balance: number;

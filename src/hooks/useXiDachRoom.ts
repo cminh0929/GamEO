@@ -260,11 +260,20 @@ export function useXiDachRoom(
         alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
         return;
       }
-
-      const { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
+      let { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
 
       const finalWinAmount = bet * multiplier;
-      if (result === 'win') {
+      const totalTableBets = gs.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
+
+      if (player.status === 'den') {
+        // PHẠT ĐỀN BÀI: Mất tổng cược cả bàn
+        const penaltyAmount = totalTableBets;
+        await executeTransaction(player.id, -penaltyAmount, 'lose', `Đền bài (>= 28đ) - Phạt tổng cược bàn`);
+        await executeTransaction(gs.dealer.id, penaltyAmount, 'win', `Thắng phạt đền từ ${player.name}`);
+        newPlayerBalance = Math.max(0, player.balance - penaltyAmount);
+        dealerBalanceDelta = penaltyAmount;
+        result = 'lose';
+      } else if (result === 'win') {
         await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
         await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
         newPlayerBalance = player.balance + finalWinAmount;
@@ -317,39 +326,32 @@ export function useXiDachRoom(
 
         const bet = player.currentBet;
 
-        // Bust (quắc >=28) — đền nguyên bàn, nhưng không âm (floor về 0)
-        if (player.status === 'bust') {
-          // Fix: use updatedPlayers (not gs.players) to exclude already-settled busters
-          // Prevents double-counting when multiple players bust in same round
-          const otherPlayers = updatedPlayers.filter((p) => p.id !== '' && p.id !== player.id && !p.isChecked);
-          const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + bet;
-          // Cap penalty: không được trừ quá số dư hiện tại
-          const actualPenalty = Math.min(player.balance, totalTableBet);
-          await executeTransaction(player.id, -actualPenalty, 'penalty',
-            `Quắc (${player.score}đ) - Đền nguyên bàn ${actualPenalty < totalTableBet ? '(hết tiền)' : ''}`);
-          if (gs.dealer.id) await executeTransaction(gs.dealer.id, actualPenalty, 'win',
-            `Nhà Cái thu tiền đền từ ${player.name} (Quắc)`);
-          totalDealerDelta += actualPenalty;
-          updatedPlayers[idx] = { ...player, isChecked: true, gameResult: 'lose', balance: player.balance - actualPenalty };
-          continue;
-        }
-
-        const { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
-
-        const finalWinAmount = bet * multiplier;
+        const totalTableBets = gs.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
         let newPlayerBalance = player.balance;
-        if (result === 'win') {
-          await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
-          await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
-          newPlayerBalance = player.balance + finalWinAmount;
-          totalDealerDelta -= finalWinAmount;
-        } else if (result === 'lose') {
-          await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
-          await executeTransaction(gs.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
-          newPlayerBalance = player.balance - bet;
-          totalDealerDelta += bet;
+        let finalResult: 'win' | 'lose' | 'draw' = 'draw';
+
+        if (player.status === 'den') {
+          // PHẠT ĐỀN BÀI: Mất tổng cược cả bàn
+          const penaltyAmount = totalTableBets;
+          await executeTransaction(player.id, -penaltyAmount, 'lose', `Đền bài (>= 28đ) - Phạt tổng cược bàn`);
+          newPlayerBalance = Math.max(0, player.balance - penaltyAmount);
+          totalDealerDelta += penaltyAmount;
+          finalResult = 'lose';
+        } else {
+          const { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
+          finalResult = result;
+          if (result === 'win') {
+            const finalWinAmount = bet * multiplier;
+            await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
+            newPlayerBalance = player.balance + finalWinAmount;
+            totalDealerDelta -= finalWinAmount;
+          } else if (result === 'lose') {
+            await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
+            newPlayerBalance = player.balance - bet;
+            totalDealerDelta += bet;
+          }
         }
-        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: result, balance: newPlayerBalance };
+        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: finalResult, balance: newPlayerBalance };
       }
 
       updateRemoteState({

@@ -40,6 +40,7 @@ export class XiDachEngine {
       gs.dealer.id === profile.id;
     
     if (alreadySeated) throw new Error('Bạn đã có vị trí rồi!');
+    if (profile.balance < 10000) throw new Error('Bạn cần ít nhất 10,000 xu để vào bàn!');
 
     this.updateLastAction();
 
@@ -125,9 +126,12 @@ export class XiDachEngine {
     this.updateLastAction();
     this.state.deck = newDeck;
 
-    if (isBust) {
-      this.state.players[idx] = { ...player, hand: newHand, score: newScore, status: 'bust' };
+    // Logic Đền bài (>= 28 điểm)
+    if (newScore >= 28) {
+      this.state.players[idx] = { ...player, hand: newHand, score: newScore, status: 'den' };
+      this.getNextTurnState();
     } else {
+      // Logic Quắc (22-27): Không bắt buộc dừng
       this.state.players[idx] = { ...player, hand: newHand, score: newScore, status: isMaxCards ? 'stay' : 'playing' };
       if (isMaxCards) {
         this.getNextTurnState();
