@@ -27,6 +27,7 @@ type ExecuteTransaction = (userId: string, amount: number, type: string, descrip
 export function useXiDachRoom(
   profile: Profile | null,
   executeTransaction: ExecuteTransaction,
+  refreshLogs?: () => Promise<void>,
 ) {
   const [gameState, setGameState] = useState<GameState>(createEmptyState());
   // Ref always holds the latest gameState — fixes stale closure race condition
@@ -238,10 +239,18 @@ export function useXiDachRoom(
   const stand = useCallback((idx: number) => {
     const gs = gameStateRef.current;
     if (gs.turnIndex !== idx) return;
+    const player = gs.players[idx];
+
+    // Buộc rút bài nếu điểm < 16 và chưa đủ 5 lá
+    // (5 lá không bust → Ngũ Linh, tự động stay từ hit(), không qua stand)
+    if (player.hand.length < 5 && player.score < 16) {
+      return alert('Điểm dưới 16 — bạn phải rút thêm bài trước khi dừng!');
+    }
+
     const updatedPlayers = [...gs.players];
     // Bust players stay as 'bust', non-bust players become 'stay'
     if (updatedPlayers[idx].status !== 'bust') {
-      updatedPlayers[idx].status = 'stay';
+      updatedPlayers[idx] = { ...updatedPlayers[idx], status: 'stay' };
     }
     updateRemoteState(getNextTurnState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() }));
   }, [getNextTurnState, updateRemoteState]);
@@ -339,6 +348,8 @@ export function useXiDachRoom(
         dealer: { ...gs.dealer, balance: gs.dealer.balance + dealerBalanceDelta },
         lastActionAt: Date.now(),
       });
+      // Refresh transaction log cho player hiện tại sau khi bị xét
+      await refreshLogs?.();
     } catch (err) {
       console.error('[checkPlayer] Transaction failed — game state NOT updated:', err);
       alert('Lỗi giao dịch! Vui lòng thử lại.');
@@ -437,6 +448,8 @@ export function useXiDachRoom(
         dealer: { ...gs.dealer, balance: gs.dealer.balance + totalDealerDelta },
         lastActionAt: Date.now(),
       });
+      // Refresh transaction log cho player hiện tại sau khi bị xét
+      await refreshLogs?.();
     } catch (err) {
       console.error('[checkAllPlayers] Transaction failed — game state NOT updated:', err);
       alert('Lỗi giao dịch! Vui lòng thử lại.');
@@ -449,7 +462,10 @@ export function useXiDachRoom(
     const gs = gameStateRef.current;
     if (gs.dealer.id !== profile?.id) return;
     if (gs.dealer.hand.length >= 5) return alert('Nhà Cái đã đạt giới hạn 5 lá bài!');
-    if (gs.players.some((p) => p.id !== '' && p.isChecked)) return alert('Đã xét bài, không thể rút thêm!');
+    // Chặn khi TẤT CẢ người chơi đã được xét (không chỉ một người)
+    const activePlayers = gs.players.filter((p) => p.id !== '');
+    const allChecked = activePlayers.length > 0 && activePlayers.every((p) => p.isChecked);
+    if (allChecked) return alert('Tất cả người chơi đã được xét, không thể rút thêm bài!');
     const newDeck = [...gs.deck];
     const newCard = newDeck.pop()!;
     const newHand = [...gs.dealer.hand, newCard];

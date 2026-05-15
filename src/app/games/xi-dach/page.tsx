@@ -54,8 +54,8 @@ function BlockedTabScreen() {
 // ─── Main Game Page ───────────────────────────────────────────────────────────
 function XiDachGame() {
   const { session, profile } = useAuth();
-  const { logs, executeTransaction } = useTransactions(session?.user.id);
-  const { gameState, actions } = useXiDachRoom(profile, executeTransaction);
+  const { logs, executeTransaction, refreshLogs } = useTransactions(session?.user.id);
+  const { gameState, actions } = useXiDachRoom(profile, executeTransaction, refreshLogs);
   const { isBlocked } = useTabGuard(session?.user.id ?? null, ROOM_ID);
   const { timeLeft, idleTimeLeft } = useGameTimer({
     gameState,
