@@ -19,39 +19,40 @@ export class FinanceService {
     description: string
   ): Promise<void> {
     if (!userId) return;
-    try {
-      // Atomic RPC: avoids SELECT→UPDATE race condition when concurrent transactions occur
-      const { error: rpcError } = await supabase.rpc('update_balance', {
-        p_user_id: userId,
-        p_amount: amount,
-      });
 
-      if (rpcError) {
-        // Fallback: RPC not yet deployed — use non-atomic path
-        console.warn('update_balance RPC unavailable, falling back:', rpcError.message);
-        const { data: currentProfile, error: fetchError } = await supabase
-          .from('profiles')
-          .select('balance')
-          .eq('id', userId)
-          .maybeSingle();
+    // Atomic RPC: avoids SELECT→UPDATE race condition when concurrent transactions occur
+    const { error: rpcError } = await supabase.rpc('update_balance', {
+      p_user_id: userId,
+      p_amount: amount,
+    });
 
-        if (fetchError || !currentProfile) throw new Error('Profile not found');
+    if (rpcError) {
+      // Fallback: RPC not yet deployed — use non-atomic path
+      console.warn('update_balance RPC unavailable, falling back:', rpcError.message);
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', userId)
+        .maybeSingle();
 
-        const newBalance = (currentProfile.balance || 0) + amount;
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ balance: newBalance })
-          .eq('id', userId);
+      if (fetchError || !currentProfile) throw new Error('Profile not found for user: ' + userId);
 
-        if (updateError) throw updateError;
-      }
+      // Floor at 0: game logic already caps penalty, this is a DB-level safety net
+      const newBalance = Math.max(0, (currentProfile.balance || 0) + amount);
 
-      await supabase
-        .from('transaction_logs')
-        .insert({ user_id: userId, amount, type, description });
-    } catch (err) {
-      console.error('Transaction Error:', err);
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
     }
+
+    // Log the transaction — non-critical, log but don't throw
+    const { error: logError } = await supabase
+      .from('transaction_logs')
+      .insert({ user_id: userId, amount, type, description });
+    if (logError) console.warn('Transaction log failed (non-critical):', logError.message);
   }
 
   static async fetchProfile(userId: string) {
