@@ -118,16 +118,20 @@ export function useXiDachRoom(
     const isGameActive = gs.status === 'playing';
 
     if (newState.dealer.id === profile.id) {
-      const isRoomActive = gs.status === 'playing' || gs.status === 'betting';
-      if (isRoomActive) {
+      if (gs.status === 'playing') {
+        alert('Ván bài đang diễn ra, bạn không thể rời bàn lúc này!');
+        return;
+      }
+      
+      if (gs.status === 'betting') {
         // Refund all before ending
         await refundAllPlayers(gs);
         newState.status = 'ended';
-        // Fix: clone players array properly instead of mutating through shallow ref
-        newState.players = newState.players.map((p) => ({
-          ...p, hand: [], currentBet: 0, gameResult: null, isChecked: false, status: 'playing' as const,
-        }));
       }
+      // Fix: clone players array properly instead of mutating through shallow ref
+      newState.players = newState.players.map((p) => ({
+        ...p, hand: [], currentBet: 0, gameResult: null, isChecked: false, status: 'playing' as const,
+      }));
       newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
     } else {
       const pIdx = newState.players.findIndex((p) => p.id === profile.id);
@@ -442,26 +446,18 @@ export function useXiDachRoom(
       await refundAllPlayers(gs);
       await resetTableToEmpty();
     } else if (gs.status === 'playing') {
-      if (gs.turnIndex === -1) {
-        // Dealer's turn
-        const engine = new XiDachEngine(gs);
-        const dealer = gs.dealer;
-        const res = engine.canDealerCheck(dealer);
-        if (res.allowed) {
-          console.log('[handleDealerAFK] Phase: playing (Dealer turn). Auto-checking all.');
-          await checkAllPlayers();
-        } else {
-          console.log('[handleDealerAFK] Phase: playing (Dealer turn). Auto-hitting.');
-          await dealerHit();
-        }
+      // TRONG VÁN BÀI: Tuyệt đối không hoàn tiền hay reset bàn để tránh Nhà Cái gian lận (Rage Quit)
+      // Hệ thống sẽ ép Nhà Cái thực hiện hành động tự động cho đến khi ván bài kết thúc
+      const engine = new XiDachEngine(gs);
+      const dealer = gs.dealer;
+      const res = engine.canDealerCheck(dealer);
+      
+      if (res.allowed) {
+        console.log('[handleDealerAFK] Anti-Cheat: Auto-checking all players.');
+        await checkAllPlayers();
       } else {
-        // Still players' turn, but dealer is idle (maybe players are idle too?)
-        // If players are idle, they will be handled by autoAction (30s).
-        // If the dealer is idle for 60s, it means NO action (including player actions) 
-        // has happened. This is a dead room.
-        console.log('[handleDealerAFK] Phase: playing (Dead room). Refunding and resetting.');
-        await refundAllPlayers(gs);
-        await resetTableToEmpty();
+        console.log('[handleDealerAFK] Anti-Cheat: Auto-hitting for Dealer.');
+        await dealerHit();
       }
     }
   }, [resetTableToEmpty, refundAllPlayers, checkAllPlayers, dealerHit]);
