@@ -21,6 +21,7 @@ const createEmptyState = (): GameState => ({
   status: 'ended',
   turnIndex: 0,
   lastActionAt: Date.now(),
+  processedTransactions: [],
 });
 
 type ExecuteTransaction = (userId: string, amount: number, type: string, description: string) => Promise<void>;
@@ -167,6 +168,214 @@ export function useXiDachRoom(
     updateRemoteState(newState);
   }, [profile, executeTransaction, getNextTurnState, updateRemoteState]);
 
+  const checkPlayer = useCallback(async (idx: number) => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const gs = gameStateRef.current;
+      if (gs.dealer.id !== profile?.id) return;
+
+      const player = gs.players[idx];
+      // Idempotency guard — prevent double-charge if state update races
+      if (player.isChecked) return;
+
+      const updatedPlayers = [...gs.players];
+      const bet = player.currentBet;
+      let dealerBalanceDelta = 0;
+      let newPlayerBalance = player.balance;
+      
+      // Khởi tạo/Lấy danh sách tx đã xử lý
+      const processedTx = gs.processedTransactions || [];
+      const roundKey = gs.roundId || `fallback-${gs.lastActionAt || 0}`; // Dùng roundId làm key cố định
+
+      // Bust (quắc >=28) — đền nguyên bàn, nhưng không âm (floor về 0)
+      if (player.status === 'bust') {
+        const otherPlayers = gs.players.filter((p) => p.id !== '' && p.id !== player.id);
+        const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + bet;
+        // Cap penalty: không được trừ quá số dư hiện tại
+        const actualPenalty = Math.min(player.balance, totalTableBet);
+        
+        const txId = `pen-${player.id}-${roundKey}`;
+        if (!processedTx.includes(txId)) {
+          await executeTransaction(player.id, -actualPenalty, 'penalty',
+            `Quắc (${player.score}đ) - Đền nguyên bàn ${actualPenalty < totalTableBet ? '(hết tiền)' : ''}`);
+          if (gs.dealer.id) await executeTransaction(gs.dealer.id, actualPenalty, 'win',
+            `Nhà Cái thu tiền đền từ ${player.name} (Quắc)`);
+          processedTx.push(txId);
+        }
+
+        dealerBalanceDelta = actualPenalty;
+        newPlayerBalance = player.balance - actualPenalty; 
+        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: 'lose', balance: newPlayerBalance };
+        updateRemoteState({
+          ...gs,
+          players: updatedPlayers,
+          dealer: { ...gs.dealer, balance: gs.dealer.balance + dealerBalanceDelta },
+          processedTransactions: processedTx,
+          lastActionAt: Date.now(),
+        });
+        return;
+      }
+
+      // Normal check
+      const dealerScore = Hand.calculateScore(gs.dealer.hand);
+      const dealerSpecial = Hand.checkSpecialHands(gs.dealer);
+      
+      const isSpecial = dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach';
+      if (!isSpecial && dealerScore < 15 && gs.dealer.hand.length < 5) {
+        alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
+        return;
+      }
+      let { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
+
+      const finalWinAmount = bet * multiplier;
+
+      if (player.status === 'den') {
+        const penaltyAmount = gs.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
+        const txId = `den-${player.id}-${roundKey}`;
+        if (!processedTx.includes(txId)) {
+          await executeTransaction(player.id, -penaltyAmount, 'lose', `Đền bài (>= 28đ) - Phạt tổng cược bàn`);
+          if (gs.dealer.id) await executeTransaction(gs.dealer.id, penaltyAmount, 'win', `Thắng phạt đền từ ${player.name}`);
+          processedTx.push(txId);
+        }
+        newPlayerBalance = Math.max(0, player.balance - penaltyAmount);
+        dealerBalanceDelta = penaltyAmount;
+        result = 'lose';
+      } else if (result === 'win') {
+        const txId = `win-${player.id}-${roundKey}`;
+        if (!processedTx.includes(txId)) {
+          await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
+          if (gs.dealer.id) await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
+          processedTx.push(txId);
+        }
+        newPlayerBalance = player.balance + finalWinAmount;
+        dealerBalanceDelta = -finalWinAmount;
+      } else if (result === 'lose') {
+        const txId = `lose-${player.id}-${roundKey}`;
+        if (!processedTx.includes(txId)) {
+          await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
+          if (gs.dealer.id) await executeTransaction(gs.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
+          processedTx.push(txId);
+        }
+        newPlayerBalance = player.balance - bet;
+        dealerBalanceDelta = bet;
+      }
+
+      updatedPlayers[idx] = { ...player, isChecked: true, gameResult: result, balance: newPlayerBalance };
+      updateRemoteState({
+        ...gs,
+        players: updatedPlayers,
+        dealer: { ...gs.dealer, balance: gs.dealer.balance + dealerBalanceDelta },
+        processedTransactions: processedTx,
+        lastActionAt: Date.now(),
+      });
+      // Refresh transaction log cho player hiện tại sau khi bị xét
+      await refreshLogs?.();
+    } catch (err) {
+      console.error('[checkPlayer] Transaction failed — game state NOT updated:', err);
+      alert('Lỗi giao dịch! Vui lòng thử lại.');
+    } finally {
+      isCheckingRef.current = false;
+    }
+  }, [profile, executeTransaction, updateRemoteState, refreshLogs]);
+
+  // Xét tất cả người chơi còn lại cùng lúc (dùng sau khi tất cả đã stand/bust)
+  const checkAllPlayers = useCallback(async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const gs = gameStateRef.current;
+      if (gs.dealer.id !== profile?.id) return;
+      const dealerScore = Hand.calculateScore(gs.dealer.hand);
+      const dealerSpecial = Hand.checkSpecialHands(gs.dealer);
+      
+      // Nếu không có bài đặc biệt thì mới check điểm tối thiểu 15
+      const isSpecial = dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach';
+      if (!isSpecial && dealerScore < 15 && gs.dealer.hand.length < 5) {
+        alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
+        return;
+      }
+
+      const updatedPlayers = [...gs.players];
+      // Track cumulative dealer balance change across all players
+      let totalDealerDelta = 0;
+      
+      // Khởi tạo/Lấy danh sách tx đã xử lý
+      const processedTx = gs.processedTransactions || [];
+      const roundKey = gs.roundId || `fallback-${gs.lastActionAt || 0}`;
+
+      for (let idx = 0; idx < updatedPlayers.length; idx++) {
+        const player = updatedPlayers[idx];
+        // Idempotency guard — skip empty seats and already-settled players
+        if (player.id === '' || player.isChecked) continue;
+
+        const bet = player.currentBet;
+        const totalTableBets = gs.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
+        let newPlayerBalance = player.balance;
+        let finalResult: 'win' | 'lose' | 'draw' = 'draw';
+
+        if (player.status === 'den') {
+          // PHẠT ĐỀN BÀI: Mất tổng cược cả bàn
+          const penaltyAmount = totalTableBets;
+          const txId = `den-${player.id}-${roundKey}`;
+          if (!processedTx.includes(txId)) {
+            await executeTransaction(player.id, -penaltyAmount, 'lose', `Đền bài (>= 28đ) - Phạt tổng cược bàn`);
+            processedTx.push(txId);
+          }
+          newPlayerBalance = Math.max(0, player.balance - penaltyAmount);
+          totalDealerDelta += penaltyAmount;
+          finalResult = 'lose';
+        } else {
+          const { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
+          finalResult = result;
+          if (result === 'win') {
+            const finalWinAmount = bet * multiplier;
+            const txId = `win-${player.id}-${roundKey}`;
+            if (!processedTx.includes(txId)) {
+              await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
+              processedTx.push(txId);
+            }
+            newPlayerBalance = player.balance + finalWinAmount;
+            totalDealerDelta -= finalWinAmount;
+          } else if (result === 'lose') {
+            const txId = `lose-${player.id}-${roundKey}`;
+            if (!processedTx.includes(txId)) {
+              await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
+              processedTx.push(txId);
+            }
+            newPlayerBalance = player.balance - bet;
+            totalDealerDelta += bet;
+          }
+        }
+        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: finalResult, balance: newPlayerBalance };
+      }
+
+      // Thực hiện giao dịch tổng cho Nhà cái nếu có thay đổi
+      const dealerTxId = `dealer-all-${roundKey}`;
+      if (totalDealerDelta !== 0 && gs.dealer.id && !processedTx.includes(dealerTxId)) {
+        const type = totalDealerDelta > 0 ? 'win' : 'lose';
+        const desc = totalDealerDelta > 0 ? 'Thắng cược tổng từ bàn chơi' : 'Thua cược tổng cho bàn chơi';
+        await executeTransaction(gs.dealer.id, totalDealerDelta, type, desc);
+        processedTx.push(dealerTxId);
+      }
+
+      updateRemoteState({
+        ...gs,
+        players: updatedPlayers,
+        dealer: { ...gs.dealer, balance: gs.dealer.balance + totalDealerDelta },
+        processedTransactions: processedTx,
+        lastActionAt: Date.now(),
+      });
+      // Refresh transaction log cho player hiện tại sau khi bị xét
+      await refreshLogs?.();
+    } catch (err) {
+      console.error('[checkAllPlayers] Transaction failed — game state NOT updated:', err);
+      alert('Lỗi giao dịch! Vui lòng thử lại.');
+    } finally {
+      isCheckingRef.current = false;
+    }
+  }, [profile, executeTransaction, updateRemoteState, refreshLogs]);
+
   const placeBet = useCallback(async (index: number, amount: number) => {
     if (!profile || amount <= 0) return;
     if (amount > profile.balance) return alert('Không đủ tiền!');
@@ -189,7 +398,15 @@ export function useXiDachRoom(
     const engine = new XiDachEngine(gs);
     const newState = engine.startNewGame();
     updateRemoteState(newState);
-  }, [profile, updateRemoteState]);
+
+    // Nếu vừa chia bài xong mà trạng thái là 'ended' (Nhà cái có Xì Bàng/Xì Dách)
+    // Tự động kích hoạt thanh toán cả bàn
+    if (newState.status === 'ended' && newState.dealer.id === profile?.id) {
+      setTimeout(() => {
+        checkAllPlayers();
+      }, 1000);
+    }
+  }, [profile, updateRemoteState, checkAllPlayers]);
 
   const hit = useCallback((idx: number) => {
     const gs = gameStateRef.current;
@@ -216,159 +433,6 @@ export function useXiDachRoom(
     updateRemoteState(newState);
   }, [updateRemoteState]);
 
-  const checkPlayer = useCallback(async (idx: number) => {
-    if (isCheckingRef.current) return;
-    isCheckingRef.current = true;
-    try {
-      const gs = gameStateRef.current;
-      if (gs.dealer.id !== profile?.id) return;
-
-      const player = gs.players[idx];
-      // Idempotency guard — prevent double-charge if state update races
-      if (player.isChecked) return;
-
-      const updatedPlayers = [...gs.players];
-      const bet = player.currentBet;
-      let dealerBalanceDelta = 0;
-      let newPlayerBalance = player.balance;
-
-      // Bust (quắc >=28) — đền nguyên bàn, nhưng không âm (floor về 0)
-      if (player.status === 'bust') {
-        const otherPlayers = gs.players.filter((p) => p.id !== '' && p.id !== player.id);
-        const totalTableBet = otherPlayers.reduce((sum, p) => sum + p.currentBet, 0) + bet;
-        // Cap penalty: không được trừ quá số dư hiện tại
-        const actualPenalty = Math.min(player.balance, totalTableBet);
-        await executeTransaction(player.id, -actualPenalty, 'penalty',
-          `Quắc (${player.score}đ) - Đền nguyên bàn ${actualPenalty < totalTableBet ? '(hết tiền)' : ''}`);
-        if (gs.dealer.id) await executeTransaction(gs.dealer.id, actualPenalty, 'win',
-          `Nhà Cái thu tiền đền từ ${player.name} (Quắc)`);
-        dealerBalanceDelta = actualPenalty;
-        newPlayerBalance = player.balance - actualPenalty; // = 0 nếu hết tiền
-        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: 'lose', balance: newPlayerBalance };
-        updateRemoteState({
-          ...gs,
-          players: updatedPlayers,
-          dealer: { ...gs.dealer, balance: gs.dealer.balance + dealerBalanceDelta },
-          lastActionAt: Date.now(),
-        });
-        return;
-      }
-
-      // Normal check
-      const dealerScore = Hand.calculateScore(gs.dealer.hand);
-      if (dealerScore < 15 && gs.dealer.hand.length < 5) {
-        alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
-        return;
-      }
-      let { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
-
-      const finalWinAmount = bet * multiplier;
-      const totalTableBets = gs.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
-
-      if (player.status === 'den') {
-        // PHẠT ĐỀN BÀI: Mất tổng cược cả bàn
-        const penaltyAmount = totalTableBets;
-        await executeTransaction(player.id, -penaltyAmount, 'lose', `Đền bài (>= 28đ) - Phạt tổng cược bàn`);
-        await executeTransaction(gs.dealer.id, penaltyAmount, 'win', `Thắng phạt đền từ ${player.name}`);
-        newPlayerBalance = Math.max(0, player.balance - penaltyAmount);
-        dealerBalanceDelta = penaltyAmount;
-        result = 'lose';
-      } else if (result === 'win') {
-        await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
-        await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
-        newPlayerBalance = player.balance + finalWinAmount;
-        dealerBalanceDelta = -finalWinAmount;
-      } else if (result === 'lose') {
-        await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
-        await executeTransaction(gs.dealer.id, bet, 'win', `Thắng từ ${player.name}`);
-        newPlayerBalance = player.balance - bet;
-        dealerBalanceDelta = bet;
-      }
-
-      updatedPlayers[idx] = { ...player, isChecked: true, gameResult: result, balance: newPlayerBalance };
-      updateRemoteState({
-        ...gs,
-        players: updatedPlayers,
-        dealer: { ...gs.dealer, balance: gs.dealer.balance + dealerBalanceDelta },
-        lastActionAt: Date.now(),
-      });
-      // Refresh transaction log cho player hiện tại sau khi bị xét
-      await refreshLogs?.();
-    } catch (err) {
-      console.error('[checkPlayer] Transaction failed — game state NOT updated:', err);
-      alert('Lỗi giao dịch! Vui lòng thử lại.');
-    } finally {
-      isCheckingRef.current = false;
-    }
-  }, [profile, executeTransaction, updateRemoteState, refreshLogs]);
-
-  // Xét tất cả người chơi còn lại cùng lúc (dùng sau khi tất cả đã stand/bust)
-  const checkAllPlayers = useCallback(async () => {
-    if (isCheckingRef.current) return;
-    isCheckingRef.current = true;
-    try {
-      const gs = gameStateRef.current;
-      if (gs.dealer.id !== profile?.id) return;
-      const dealerScore = Hand.calculateScore(gs.dealer.hand);
-      if (dealerScore < 15 && gs.dealer.hand.length < 5) {
-        alert('Nhà Cái phải đủ ít nhất 15 điểm hoặc 5 lá bài mới được quyền XÉT!');
-        return;
-      }
-
-      const updatedPlayers = [...gs.players];
-      // Track cumulative dealer balance change across all players
-      let totalDealerDelta = 0;
-
-      for (let idx = 0; idx < updatedPlayers.length; idx++) {
-        const player = updatedPlayers[idx];
-        // Idempotency guard — skip empty seats and already-settled players
-        if (player.id === '' || player.isChecked) continue;
-
-        const bet = player.currentBet;
-
-        const totalTableBets = gs.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
-        let newPlayerBalance = player.balance;
-        let finalResult: 'win' | 'lose' | 'draw' = 'draw';
-
-        if (player.status === 'den') {
-          // PHẠT ĐỀN BÀI: Mất tổng cược cả bàn
-          const penaltyAmount = totalTableBets;
-          await executeTransaction(player.id, -penaltyAmount, 'lose', `Đền bài (>= 28đ) - Phạt tổng cược bàn`);
-          newPlayerBalance = Math.max(0, player.balance - penaltyAmount);
-          totalDealerDelta += penaltyAmount;
-          finalResult = 'lose';
-        } else {
-          const { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
-          finalResult = result;
-          if (result === 'win') {
-            const finalWinAmount = bet * multiplier;
-            await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
-            newPlayerBalance = player.balance + finalWinAmount;
-            totalDealerDelta -= finalWinAmount;
-          } else if (result === 'lose') {
-            await executeTransaction(player.id, -bet, 'lose', `Thua ván bài (${player.score + 'đ'})`);
-            newPlayerBalance = player.balance - bet;
-            totalDealerDelta += bet;
-          }
-        }
-        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: finalResult, balance: newPlayerBalance };
-      }
-
-      updateRemoteState({
-        ...gs,
-        players: updatedPlayers,
-        dealer: { ...gs.dealer, balance: gs.dealer.balance + totalDealerDelta },
-        lastActionAt: Date.now(),
-      });
-      // Refresh transaction log cho player hiện tại sau khi bị xét
-      await refreshLogs?.();
-    } catch (err) {
-      console.error('[checkAllPlayers] Transaction failed — game state NOT updated:', err);
-      alert('Lỗi giao dịch! Vui lòng thử lại.');
-    } finally {
-      isCheckingRef.current = false;
-    }
-  }, [profile, executeTransaction, updateRemoteState, refreshLogs]);
 
   const dealerHit = useCallback(() => {
     const gs = gameStateRef.current;

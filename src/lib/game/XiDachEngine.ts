@@ -90,6 +90,7 @@ export class XiDachEngine {
       this.state.players = gs.players.map((p) => ({
         ...p, currentBet: 0, gameResult: null, isChecked: false, hand: [], status: 'playing' as const,
       }));
+      this.state.processedTransactions = [];
       return this.state;
     }
 
@@ -125,6 +126,8 @@ export class XiDachEngine {
       this.state.turnIndex = firstPlayerIndex !== -1 ? firstPlayerIndex : -1;
     }
     this.state.turnDeadline = Date.now() + 30000;
+    this.state.roundId = `round-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    this.state.processedTransactions = [];
     this.updateLastAction();
     
     return this.state;
