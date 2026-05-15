@@ -178,7 +178,8 @@ export class XiDachEngine {
     } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
       result = 'lose';
     } else if (player.score > 21) {
-      result = 'lose';
+      if (dealerScore > 21) result = 'draw';
+      else result = 'lose';
     } else if (playerSpecial === 'ngu_linh') {
       if (dealerSpecial === 'ngu_linh') result = 'draw';
       else { result = 'win'; multiplier = 2; specialHand = 'Ngũ Linh'; }
