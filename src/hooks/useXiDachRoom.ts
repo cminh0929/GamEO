@@ -291,7 +291,7 @@ export function useXiDachRoom(
     } finally {
       isCheckingRef.current = false;
     }
-  }, [profile, executeTransaction, updateRemoteState]);
+  }, [profile, executeTransaction, updateRemoteState, refreshLogs]);
 
   // Xét tất cả người chơi còn lại cùng lúc (dùng sau khi tất cả đã stand/bust)
   const checkAllPlayers = useCallback(async () => {
@@ -366,7 +366,7 @@ export function useXiDachRoom(
     } finally {
       isCheckingRef.current = false;
     }
-  }, [profile, executeTransaction, updateRemoteState]);
+  }, [profile, executeTransaction, updateRemoteState, refreshLogs]);
 
   const dealerHit = useCallback(() => {
     const gs = gameStateRef.current;

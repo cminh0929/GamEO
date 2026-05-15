@@ -119,7 +119,7 @@ export class XiDachEngine {
     const newCard = newDeck.pop()!;
     const newHand = [...player.hand, newCard];
     const newScore = Hand.calculateScore(newHand);
-    const isBust = newScore >= 28;
+    const isBust = newScore > 21;
     const isMaxCards = newHand.length === 5;
 
     this.updateLastAction();
@@ -137,9 +137,14 @@ export class XiDachEngine {
   }
 
   stand(idx: number): GameState {
+    const player = this.state.players[idx];
+    if (player.score < 16 && player.hand.length < 5) {
+      throw new Error('Bạn chưa đủ 16 điểm để Dừng bài!');
+    }
+    
     this.updateLastAction();
-    if (this.state.players[idx].status !== 'bust') {
-      this.state.players[idx].status = 'stay';
+    if (player.status !== 'bust') {
+      player.status = 'stay';
     }
     return this.getNextTurnState();
   }
