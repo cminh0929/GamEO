@@ -93,7 +93,15 @@ export function PlatformShell() {
         <AdminPanel onClose={() => setShowAdmin(false)} />
       )}
 
-      {/* Floating chat — available on every page */}
+      {/* Orientation Guard for Mobile */}
+      <div className="orientation-guard">
+        <div className="og-icon">🔄</div>
+        <h2 className="og-title">Xoay ngang màn hình</h2>
+        <p className="og-desc">
+          Vui lòng xoay ngang điện thoại để có trải nghiệm chơi bài tốt nhất tại GAMEO.
+        </p>
+      </div>
+
       <TCChat />
     </>
   );

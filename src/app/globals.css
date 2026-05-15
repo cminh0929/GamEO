@@ -1498,3 +1498,116 @@ body {
   font-size: 0.82rem;
   padding: 8px;
 }
+
+/* ============================================================
+   MOBILE RESPONSIVENESS (Main Fixes)
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Platform Shell */
+  .platform-header {
+    padding: 0 12px;
+    height: 56px;
+  }
+  .platform-logo span { display: none; } /* Hide "GAMEO" text, keep emoji */
+  .platform-balance {
+    padding: 5px 12px;
+    font-size: 0.85rem;
+  }
+  .platform-username { display: none; } /* Hide username on small screens */
+  .app-content { padding-top: 56px; }
+
+  /* Lobby Page */
+  .lobby-container {
+    padding: 30px 16px;
+    gap: 30px;
+  }
+  .lobby-hero-title {
+    font-size: 3rem;
+  }
+  .game-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .game-card {
+    padding: 16px;
+    gap: 10px;
+  }
+  .game-card-icon { font-size: 2.2rem; }
+  .game-card-title { font-size: 1.1rem; }
+  .btn-play-now {
+    width: 100%;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+  
+  /* Transaction Sidebar - Hide or make floating on mobile */
+  .transaction-sidebar {
+    width: 160px;
+    left: 10px;
+    bottom: 10px;
+    font-size: 0.6rem;
+    opacity: 0.8;
+  }
+}
+
+/* ============================================================
+   ORIENTATION GUARD (Landscape Lock)
+   ============================================================ */
+.orientation-guard {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(5, 5, 5, 0.95);
+  backdrop-filter: blur(10px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  color: white;
+}
+
+@media (orientation: portrait) and (max-width: 1024px) {
+  .orientation-guard {
+    display: flex;
+  }
+  /* Disable scrolling when guard is active */
+  body { overflow: hidden !important; }
+}
+
+.og-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  animation: rotate-phone 2s infinite ease-in-out;
+}
+
+.og-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--gold);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.og-desc {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 280px;
+  line-height: 1.6;
+}
+
+@keyframes rotate-phone {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(90deg); }
+  50% { transform: rotate(90deg); }
+  75% { transform: rotate(0deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@media (max-width: 480px) {
+  .lobby-hero-title { font-size: 2.2rem; }
+  .game-grid { grid-template-columns: 1fr; }
+}
