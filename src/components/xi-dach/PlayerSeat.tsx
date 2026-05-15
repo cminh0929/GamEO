@@ -52,7 +52,9 @@ export function PlayerSeat({
   const notSeated = !gameState.players.some((p) => p.id === profile?.id) && gameState.dealer.id !== profile?.id;
   const dealerScore = Hand.calculateScore(gameState.dealer.hand);
 
-  const isBottomSeat = index >= 3 && index <= 5;
+  // Vị trí 2, 3, 4 là các ghế ở phía trên cùng của bàn (Top Left, Top Center, Top Right)
+  // Ta sẽ đẩy thông tin Tên/Số dư của các ghế này xuống dưới để không bị sát mép trên.
+  const isInfoAtBottom = index >= 2 && index <= 4;
   const isVisible = isMe || player.isChecked || gameState.status === 'ended';
 
   return (
@@ -62,7 +64,7 @@ export function PlayerSeat({
         `seat-${index}`,
         isMe ? 'is-me' : '',
         isMyTurn ? 'active-turn' : '',
-        isBottomSeat ? 'is-bottom' : 'is-top',
+        isInfoAtBottom ? 'is-bottom' : 'is-top',
       ].filter(Boolean).join(' ')}
     >
       {/* Money Animation */}
@@ -72,17 +74,21 @@ export function PlayerSeat({
         </div>
       )}
 
-      {/* Pop-up chat top for top seats */}
-      {!isBottomSeat && chatBubble && player.id !== '' && (
-        <div className="seat-bubble">{chatBubble}</div>
+      {/* Pop-up chat: hiển thị phía ngược lại với thông tin định danh */}
+      {isInfoAtBottom ? (
+        // Nếu thông tin ở dưới, chat hiện ở trên
+        chatBubble && player.id !== '' && <div className="seat-bubble">{chatBubble}</div>
+      ) : (
+        // Nếu thông tin ở trên, chat hiện ở dưới (bottom-bubble)
+        chatBubble && player.id !== '' && <div className="seat-bubble bottom-bubble">{chatBubble}</div>
       )}
 
-      {/* Header (Balance + Name + Timer) at TOP for top seats */}
-      {!isBottomSeat && player.id !== '' && (
+      {/* 1. Header (Balance + Name + Timer) ở TRÊN cho các ghế 0, 1, 5, 6 */}
+      {!isInfoAtBottom && player.id !== '' && (
         <div className="player-header">
           <div className="player-info-column">
             <span className="balance">${(player.balance ?? 0).toLocaleString()}</span>
-            <div className="name-row">
+            <div className="name-row" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {player.avatarUrl && (
                 <img src={player.avatarUrl} alt="Avt" className="player-avatar-img" />
               )}
@@ -102,12 +108,12 @@ export function PlayerSeat({
         </div>
       )}
 
-      {/* Seat trigger for empty seats at TOP for top seats */}
-      {!isBottomSeat && player.id === '' && notSeated && (
+      {/* Nút ngồi vào ghế trống ở TRÊN */}
+      {!isInfoAtBottom && player.id === '' && notSeated && (
         <button className="btn-sit top" onClick={() => onSit(index)}>Ngồi đây</button>
       )}
 
-      {/* Hand area remains central */}
+      {/* 2. Hand area (Trung tâm) */}
       <div className="hand">
         {player.hand.length > 0
           ? player.hand.map((card, i) => (
@@ -138,11 +144,13 @@ export function PlayerSeat({
         </div>
       )}
 
-      {/* Action buttons / Bet display */}
+      {/* 3. Action buttons / Bet display */}
       <div className="player-footer">
         {player.id !== '' && (
           <>
-            <div className="bet-display">${(player.currentBet ?? 0).toLocaleString()}</div>
+            <div className="bet-display" style={{ color: '#2ecc71', fontWeight: 'bold' }}>
+              ${(player.currentBet ?? 0).toLocaleString()}
+            </div>
 
             {isMe && gameState.status === 'betting' && (
               <input
@@ -182,10 +190,19 @@ export function PlayerSeat({
         )}
       </div>
 
-      {/* Header (Name + Balance) at BOTTOM for bottom seats (3, 4, 5) */}
-      {isBottomSeat && player.id !== '' && (
-        <div className="player-header bottom">
-          <div className="header-actions top">
+      {/* 4. Header (Name + Balance) ở DƯỚI cho các ghế 2, 3, 4 (Phía trên bàn) */}
+      {isInfoAtBottom && player.id !== '' && (
+        <div className="player-header bottom" style={{ marginTop: '5px' }}>
+          <div className="player-info-column">
+            <div className="name-row" style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+              {player.avatarUrl && (
+                <img src={player.avatarUrl} alt="Avt" className="player-avatar-img" />
+              )}
+              <span className="name">{player.name}</span>
+            </div>
+            <span className="balance">${(player.balance ?? 0).toLocaleString()}</span>
+          </div>
+          <div className="header-actions" style={{ display: 'flex', justifyContent: 'center', width: '100%', gap: '10px' }}>
              {isMyTurn && <span className="timer">{timeLeft}s</span>}
              {(isDealer || isAdmin) && player.id !== '' && player.id !== profile?.id && (
                <button
@@ -195,26 +212,12 @@ export function PlayerSeat({
                >❌</button>
              )}
           </div>
-          <div className="player-info-column">
-            <div className="name-row">
-              {player.avatarUrl && (
-                <img src={player.avatarUrl} alt="Avt" className="player-avatar-img" />
-              )}
-              <span className="name">{player.name}</span>
-            </div>
-            <span className="balance">${(player.balance ?? 0).toLocaleString()}</span>
-          </div>
         </div>
       )}
 
-      {/* Seat trigger for empty seats at BOTTOM for bottom seats */}
-      {isBottomSeat && player.id === '' && notSeated && (
+      {/* Nút ngồi vào ghế trống ở DƯỚI */}
+      {isInfoAtBottom && player.id === '' && notSeated && (
         <button className="btn-sit bottom" onClick={() => onSit(index)}>Ngồi đây</button>
-      )}
-
-      {/* Pop-up chat at BOTTOM for bottom seats */}
-      {isBottomSeat && chatBubble && player.id !== '' && (
-        <div className="seat-bubble bottom-bubble">{chatBubble}</div>
       )}
     </div>
   );
