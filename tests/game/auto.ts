@@ -66,10 +66,15 @@ async function runAutoGame() {
 
   console.log('👥 7 Bots đang vào bàn...');
   let engine = new XiDachEngine(state);
-  state = engine.takeRole('dealer', DEALER);
-  // Cho 7 bots vào đủ 7 chỗ
+  
+  // Nạp số dư thực từ DB cho Dealer
+  const { data: dData } = await supabase.from('profiles').select('*').eq('id', DEALER.id).single();
+  state = engine.takeRole('dealer', dData || DEALER);
+
+  // Nạp số dư thực từ DB cho 7 Players
   for (let i = 0; i < 7; i++) {
-    state = engine.takeRole('player', PLAYERS[i], i);
+    const { data: pData } = await supabase.from('profiles').select('*').eq('id', PLAYERS[i].id).single();
+    state = engine.takeRole('player', pData || PLAYERS[i], i);
   }
   await GameRoomService.updateGameState(ROOM_ID, state);
   CLIFormatter.render(state, 'bot-dealer');
