@@ -95,19 +95,35 @@ export class XiDachEngine {
 
     const newDeck = Deck.createShuffled();
     const dealerHand = [newDeck.pop()!, newDeck.pop()!];
+    const dealerProfile: Player = { ...gs.dealer, hand: dealerHand as CardType[], score: Hand.calculateScore(dealerHand as CardType[]) };
+    const dealerSpecial = Hand.checkSpecialHands(dealerProfile);
+
     const updatedPlayers = gs.players.map((p) => {
       if (p.id === '') return p;
       const hand = [newDeck.pop()!, newDeck.pop()!];
-      return { ...p, hand: hand as CardType[], score: Hand.calculateScore(hand as CardType[]), status: 'playing' as const, isChecked: false };
+      const pWithHand: Player = { ...p, hand: hand as CardType[], score: Hand.calculateScore(hand as CardType[]) };
+      const pSpecial = Hand.checkSpecialHands(pWithHand);
+      
+      // Nếu người chơi có Xì Bàng/Xì Dách, họ "Stay" luôn
+      if (pSpecial === 'xi_bang' || pSpecial === 'xi_dach') {
+        return { ...pWithHand, status: 'stay' as const };
+      }
+      return { ...pWithHand, status: 'playing' as const };
     });
 
-    const firstPlayerIndex = updatedPlayers.findIndex((p) => p.id !== '');
-    
     this.state.deck = newDeck;
-    this.state.dealer = { ...gs.dealer, hand: dealerHand as CardType[], score: Hand.calculateScore(dealerHand as CardType[]), status: 'playing' };
+    this.state.dealer = dealerProfile;
     this.state.players = updatedPlayers;
-    this.state.status = 'playing';
-    this.state.turnIndex = firstPlayerIndex !== -1 ? firstPlayerIndex : 0;
+    
+    // Nếu nhà cái có Xì Bàng/Xì Dách, kết thúc ván ngay (để dealer tự đi xét)
+    if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
+      this.state.status = 'ended';
+      this.state.turnIndex = -1;
+    } else {
+      this.state.status = 'playing';
+      const firstPlayerIndex = updatedPlayers.findIndex((p) => p.id !== '' && p.status === 'playing');
+      this.state.turnIndex = firstPlayerIndex !== -1 ? firstPlayerIndex : -1;
+    }
     this.state.turnDeadline = Date.now() + 30000;
     this.updateLastAction();
     
@@ -180,18 +196,21 @@ export class XiDachEngine {
     if (playerSpecial === 'xi_bang') {
       if (dealerSpecial === 'xi_bang') result = 'draw';
       else { result = 'win'; multiplier = 4; specialHand = 'Xì Bàng'; }
+    } else if (dealerSpecial === 'xi_bang') {
+      result = 'lose';
     } else if (playerSpecial === 'xi_dach') {
-      if (dealerSpecial === 'xi_bang') result = 'lose';
-      else if (dealerSpecial === 'xi_dach') result = 'draw';
+      if (dealerSpecial === 'xi_dach') result = 'draw';
       else { result = 'win'; multiplier = 3; specialHand = 'Xì Dách'; }
-    } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
+    } else if (dealerSpecial === 'xi_dach') {
+      result = 'lose';
+    } else if (playerSpecial === 'ngu_linh') {
+      if (dealerSpecial === 'ngu_linh') result = 'draw';
+      else { result = 'win'; multiplier = 2; specialHand = 'Ngũ Linh'; }
+    } else if (dealerSpecial === 'ngu_linh') {
       result = 'lose';
     } else if (player.score > 21) {
       if (dealerScore > 21) result = 'draw';
       else result = 'lose';
-    } else if (playerSpecial === 'ngu_linh') {
-      if (dealerSpecial === 'ngu_linh') result = 'draw';
-      else { result = 'win'; multiplier = 2; specialHand = 'Ngũ Linh'; }
     } else if (dealerScore > 21) {
       result = 'win';
     } else if (dealerScore > player.score) {
