@@ -100,7 +100,7 @@ export function PlayerSeat({
           )
         ) : (
           <>
-            <div className="bet-display">${player.currentBet.toLocaleString()}</div>
+            <div className="bet-display">${(player.currentBet ?? 0).toLocaleString()}</div>
 
             {isMe && gameState.status === 'betting' && (
               <input

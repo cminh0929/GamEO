@@ -37,7 +37,7 @@ export function DealerArea({
           {dealer.id ? dealer.name : 'ĐANG TRỐNG'}
         </span>
         {dealer.id ? (
-          <span className="dealer-balance">${dealer.balance.toLocaleString()}</span>
+          <span className="dealer-balance">${(dealer.balance ?? 0).toLocaleString()}</span>
         ) : (
           notSeated && (
             <button className="btn-sit dealer" onClick={onTakeDealer}>

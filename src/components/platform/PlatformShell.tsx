@@ -48,7 +48,7 @@ export function PlatformShell() {
         {/* Center: Balance */}
         {profile && (
           <div className="platform-balance">
-            💰 {profile.balance.toLocaleString()} đ
+            💰 {(profile.balance ?? 0).toLocaleString()} đ
           </div>
         )}
 

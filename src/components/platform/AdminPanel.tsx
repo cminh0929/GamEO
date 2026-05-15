@@ -78,7 +78,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     setAdjusting(true);
     try {
       await FinanceService.adminExecuteTransaction(selectedUser.id, amount, note);
-      alert(`✅ Thành công: ${isDeposit ? '+' : '-'}${raw.toLocaleString()} đ cho ${selectedUser.username}`);
+      alert(`✅ Thành công: ${isDeposit ? '+' : '-'}${(raw ?? 0).toLocaleString()} đ cho ${selectedUser.username}`);
       // Refresh
       await openUserFlow(selectedUser);
       await loadProfiles();
@@ -151,7 +151,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                           <strong>{p.username}</strong>
                         </td>
                         <td style={{ ...S.td, color: p.balance < 0 ? '#ff4444' : '#00cc77', fontWeight: 700 }}>
-                          {p.balance.toLocaleString()}
+                          {(p.balance ?? 0).toLocaleString()}
                         </td>
                         <td style={{ ...S.td, fontSize: '0.72rem', color: '#aaa' }}>
                           {p.id.slice(0, 8)}…
@@ -184,7 +184,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                 <div style={S.summaryId}>ID: {selectedUser.id}</div>
               </div>
               <div style={S.summaryBalance}>
-                💰 {selectedUser.balance.toLocaleString()} đ
+                💰 {(selectedUser.balance ?? 0).toLocaleString()} đ
               </div>
             </div>
 
@@ -195,9 +195,9 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                 <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
                   {anomalies.map(a => (
                     <li key={a.id} style={{ marginBottom: 2 }}>
-                      [{a.type}] {a.amount > 0 ? '+' : ''}{a.amount.toLocaleString()} đ — {a.description} —&nbsp;
+                      [{a.type}] {a.amount > 0 ? '+' : ''}{(a.amount ?? 0).toLocaleString()} đ — {a.description} —&nbsp;
                       <span style={{ color: '#aaa', fontSize: '0.78rem' }}>
-                        {new Date(a.created_at).toLocaleString('vi-VN')}
+                        {a.created_at ? new Date(a.created_at).toLocaleString('vi-VN') : 'N/A'}
                       </span>
                     </li>
                   ))}
@@ -269,7 +269,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                             }}
                           >
                             <td style={{ ...S.td, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-                              {new Date(log.created_at).toLocaleString('vi-VN')}
+                              {log.created_at ? new Date(log.created_at).toLocaleString('vi-VN') : 'N/A'}
                             </td>
                             <td style={{ ...S.td, fontSize: '0.82rem' }}>
                               <span style={S.typeBadge}>{log.type}</span>
@@ -279,7 +279,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                               fontWeight: 700,
                               color: log.amount > 0 ? '#00cc77' : '#ff4444',
                             }}>
-                              {log.amount > 0 ? '+' : ''}{log.amount.toLocaleString()}
+                              {log.amount > 0 ? '+' : ''}{(log.amount ?? 0).toLocaleString()}
                             </td>
                             <td style={{ ...S.td, fontSize: '0.82rem' }}>{log.description}</td>
                             <td style={{ ...S.td, textAlign: 'center' }}>

@@ -22,7 +22,7 @@ export function GameCard({ game }: GameCardProps) {
           {game.maxPlayers && (
             <span className="meta-tag">👥 Tối đa {game.maxPlayers} người</span>
           )}
-          <span className="meta-tag">💵 Cược tối thiểu: {game.minBet.toLocaleString()}đ</span>
+          <span className="meta-tag">💵 Cược tối thiểu: {(game.minBet ?? 0).toLocaleString()}đ</span>
         </div>
       </div>
       <div className="game-card-action">

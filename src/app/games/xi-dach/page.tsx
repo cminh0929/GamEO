@@ -176,7 +176,7 @@ function XiDachGame() {
           {logs.map((log) => (
             <div key={log.id} className="log-item">
               <span className={log.amount > 0 ? 'pos' : 'neg'}>
-                {log.amount > 0 ? '+' : ''}{log.amount.toLocaleString()}
+                {log.amount > 0 ? '+' : ''}{(log.amount ?? 0).toLocaleString()}
               </span>
               <p>{log.description}</p>
             </div>
