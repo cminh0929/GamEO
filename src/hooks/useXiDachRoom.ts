@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameRoomService } from '../lib/services/GameRoomService';
 import { Deck } from '../lib/game/Deck';
 import { Hand } from '../lib/game/Hand';
+import { XiDachEngine } from '../lib/game/XiDachEngine';
 import { supabase } from '../lib/supabase';
 import type { GameState, GameStatus, CardType } from '../types/game';
 import type { Profile } from '../types/platform';
@@ -90,55 +91,29 @@ export function useXiDachRoom(
 
   const takeRole = useCallback((type: 'dealer' | 'player', index?: number) => {
     if (!profile) return;
-    const gs = gameStateRef.current;
-    const alreadySeated =
-      gs.players.some((p) => p.id === profile.id) ||
-      gs.dealer.id === profile.id;
-    if (alreadySeated) return alert('Bạn đã có vị trí rồi!');
     if (profile.balance < MIN_BALANCE_TO_SIT)
       return alert(`Số dư tối thiểu ${MIN_BALANCE_TO_SIT.toLocaleString()}đ mới được ngồi vào bàn!`);
 
-    const newState = { ...gs, lastActionAt: Date.now() };
-    if (type === 'dealer') {
-      newState.dealer = {
-        ...newState.dealer,
-        id: profile.id, name: `${profile.username} 👑`,
-        balance: profile.balance, avatarUrl: profile.avatar_url ?? undefined,
-      };
-    } else if (index !== undefined) {
-      newState.players[index] = {
-        ...newState.players[index],
-        id: profile.id, name: profile.username,
-        balance: profile.balance, avatarUrl: profile.avatar_url ?? undefined,
-      };
+    try {
+      const engine = new XiDachEngine(gameStateRef.current);
+      const newState = engine.takeRole(type, profile, index);
+      updateRemoteState(newState);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi nhận chỗ!');
     }
-    updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
   const kickPlayer = useCallback((index: number | 'dealer') => {
     const gs = gameStateRef.current;
     const isDealer = gs.dealer.id === profile?.id;
 
-    // Chỉ Nhà Cái hoặc Admin mới được kích
     if (!isDealer && !isAdmin) return;
-
-    // Nhà Cái không được kích khi đang trong ván, Admin thì được phép (quyền tối cao)
     if (gs.status === 'playing' && !isAdmin) {
       return alert('Không thể kích người chơi khi đang trong ván bài!');
     }
 
-    const newState = { ...gs, lastActionAt: Date.now() };
-
-    if (index === 'dealer') {
-      if (gs.dealer.id === '') return;
-      newState.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
-    } else {
-      if (gs.players[index].id === '') return;
-      newState.players[index] = {
-        id: '', name: `Vị trí ${index + 1}`, hand: [], score: 0, status: 'playing',
-        isChecked: false, gameResult: null, balance: 0, currentBet: 0,
-      };
-    }
+    const engine = new XiDachEngine(gs);
+    const newState = engine.kickPlayer(index);
     updateRemoteState(newState);
   }, [profile, isAdmin, updateRemoteState]);
 
@@ -195,13 +170,9 @@ export function useXiDachRoom(
   const placeBet = useCallback(async (index: number, amount: number) => {
     if (!profile || amount <= 0) return;
     if (amount > profile.balance) return alert('Không đủ tiền!');
-    // Fix: proper immutable update — avoid mutating shared player objects from shallow clone
-    const current = gameStateRef.current;
-    const newState = {
-      ...current,
-      lastActionAt: Date.now(),
-      players: current.players.map((p, i) => (i === index ? { ...p, currentBet: amount } : p)),
-    };
+    
+    const engine = new XiDachEngine(gameStateRef.current);
+    const newState = engine.placeBet(index, amount);
     updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
@@ -209,41 +180,15 @@ export function useXiDachRoom(
     const gs = gameStateRef.current;
     if (gs.dealer.id !== profile?.id) return alert('Chỉ Nhà Cái mới được bắt đầu!');
 
-    if (gs.status !== 'betting') {
-      const newState = {
-        ...gs,
-        status: 'betting' as GameStatus,
-        lastActionAt: Date.now(),
-        dealer: { ...gs.dealer, hand: [], score: 0, status: 'playing' as const },
-      };
-      newState.players = newState.players.map((p) => ({
-        ...p, currentBet: 0, gameResult: null, isChecked: false, hand: [], status: 'playing' as const,
-      }));
-      updateRemoteState(newState);
-      return;
+    if (gs.status === 'betting') {
+      const activePlayers = gs.players.filter((p) => p.id !== '');
+      if (activePlayers.length === 0) return alert('Cần ít nhất 1 người chơi để bắt đầu!');
+      if (activePlayers.some((p) => p.currentBet <= 0)) return alert('Còn người chưa cược!');
     }
 
-    const activePlayers = gs.players.filter((p) => p.id !== '');
-    if (activePlayers.length === 0) return alert('Cần ít nhất 1 người chơi để bắt đầu!');
-    if (activePlayers.some((p) => p.currentBet <= 0)) return alert('Còn người chưa cược!');
-
-    const newDeck = Deck.createShuffled();
-    const dealerHand = [newDeck.pop()!, newDeck.pop()!];
-    const updatedPlayers = gs.players.map((p) => {
-      if (p.id === '') return p;
-      const hand = [newDeck.pop()!, newDeck.pop()!];
-      return { ...p, hand: hand as CardType[], score: Hand.calculateScore(hand as CardType[]), status: 'playing' as const, isChecked: false };
-    });
-
-    const firstPlayerIndex = updatedPlayers.findIndex((p) => p.id !== '');
-    updateRemoteState({
-      ...gs, deck: newDeck,
-      dealer: { ...gs.dealer, hand: dealerHand as CardType[], score: Hand.calculateScore(dealerHand as CardType[]), status: 'playing' },
-      players: updatedPlayers, status: 'playing',
-      turnIndex: firstPlayerIndex !== -1 ? firstPlayerIndex : 0,
-      turnDeadline: Date.now() + 30000,
-      lastActionAt: Date.now(),
-    });
+    const engine = new XiDachEngine(gs);
+    const newState = engine.startNewGame();
+    updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
   const hit = useCallback((idx: number) => {
@@ -252,44 +197,24 @@ export function useXiDachRoom(
     const player = gs.players[idx];
     if (player.hand.length >= 5) return alert('Đã đạt giới hạn tối đa 5 lá bài!');
 
-    const newDeck = [...gs.deck];
-    const newCard = newDeck.pop()!;
-    const updatedPlayers = [...gs.players];
-    const newHand = [...player.hand, newCard];
-    const newScore = Hand.calculateScore(newHand);
-    const isBust = newScore >= 28;
-    const isMaxCards = newHand.length === 5;
-
-    if (isBust) {
-      // Chỉ đánh dấu bust — penalty sẽ tính khi dealer XÉT
-      // Người chơi vẫn có quyền câu giờ và tự bấm Stand
-      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: 'bust' };
-      updateRemoteState({ ...gs, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() });
-    } else {
-      updatedPlayers[idx] = { ...player, hand: newHand, score: newScore, status: isMaxCards ? 'stay' : 'playing' };
-      const nextState = { ...gs, deck: newDeck, players: updatedPlayers, lastActionAt: Date.now() };
-      updateRemoteState(isMaxCards ? getNextTurnState(nextState) : nextState);
-    }
-  }, [getNextTurnState, updateRemoteState]);
+    const engine = new XiDachEngine(gs);
+    const newState = engine.hit(idx);
+    updateRemoteState(newState);
+  }, [updateRemoteState]);
 
   const stand = useCallback((idx: number) => {
     const gs = gameStateRef.current;
     if (gs.turnIndex !== idx) return;
     const player = gs.players[idx];
 
-    // Buộc rút bài nếu điểm < 16 và chưa đủ 5 lá
-    // (5 lá không bust → Ngũ Linh, tự động stay từ hit(), không qua stand)
     if (player.hand.length < 5 && player.score < 16) {
       return alert('Điểm dưới 16 — bạn phải rút thêm bài trước khi dừng!');
     }
 
-    const updatedPlayers = [...gs.players];
-    // Bust players stay as 'bust', non-bust players become 'stay'
-    if (updatedPlayers[idx].status !== 'bust') {
-      updatedPlayers[idx] = { ...updatedPlayers[idx], status: 'stay' };
-    }
-    updateRemoteState(getNextTurnState({ ...gs, players: updatedPlayers, lastActionAt: Date.now() }));
-  }, [getNextTurnState, updateRemoteState]);
+    const engine = new XiDachEngine(gs);
+    const newState = engine.stand(idx);
+    updateRemoteState(newState);
+  }, [updateRemoteState]);
 
   const checkPlayer = useCallback(async (idx: number) => {
     if (isCheckingRef.current) return;
@@ -336,37 +261,11 @@ export function useXiDachRoom(
         return;
       }
 
-      let multiplier = 1;
-      const playerSpecial = Hand.checkSpecialHands(player);
-      const dealerSpecial = Hand.checkSpecialHands(gs.dealer);
-
-      let result: 'win' | 'lose' | 'draw' = 'draw';
-      // Fix: xi_bang beats xi_dach — handle separately so xi_dach player vs xi_bang dealer = LOSE
-      if (playerSpecial === 'xi_bang') {
-        if (dealerSpecial === 'xi_bang') result = 'draw';
-        else { result = 'win'; multiplier = 4; }
-      } else if (playerSpecial === 'xi_dach') {
-        if (dealerSpecial === 'xi_bang') result = 'lose'; // dealer xi_bang beats player xi_dach
-        else if (dealerSpecial === 'xi_dach') result = 'draw';
-        else { result = 'win'; multiplier = 3; }
-      } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
-        result = 'lose';
-      } else if (player.score > 21) {
-        result = 'lose';
-      } else if (playerSpecial === 'ngu_linh') {
-        if (dealerSpecial === 'ngu_linh') result = 'draw';
-        else { result = 'win'; multiplier = 2; }
-      } else if (dealerScore > 21) {
-        result = 'win';
-      } else if (dealerScore > player.score) {
-        result = 'lose';
-      } else if (dealerScore < player.score) {
-        result = 'win';
-      }
+      const { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
 
       const finalWinAmount = bet * multiplier;
       if (result === 'win') {
-        await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${playerSpecial || player.score + 'đ'}) x${multiplier}`);
+        await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
         await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
         newPlayerBalance = player.balance + finalWinAmount;
         dealerBalanceDelta = -finalWinAmount;
@@ -435,37 +334,12 @@ export function useXiDachRoom(
           continue;
         }
 
-        let multiplier = 1;
-        const playerSpecial = Hand.checkSpecialHands(player);
-        const dealerSpecial = Hand.checkSpecialHands(gs.dealer);
-        let result: 'win' | 'lose' | 'draw' = 'draw';
-        // Fix: xi_bang beats xi_dach — handle separately so xi_dach player vs xi_bang dealer = LOSE
-        if (playerSpecial === 'xi_bang') {
-          if (dealerSpecial === 'xi_bang') result = 'draw';
-          else { result = 'win'; multiplier = 4; }
-        } else if (playerSpecial === 'xi_dach') {
-          if (dealerSpecial === 'xi_bang') result = 'lose'; // dealer xi_bang beats player xi_dach
-          else if (dealerSpecial === 'xi_dach') result = 'draw';
-          else { result = 'win'; multiplier = 3; }
-        } else if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
-          result = 'lose';
-        } else if (player.score > 21) {
-          result = 'lose';
-        } else if (playerSpecial === 'ngu_linh') {
-          if (dealerSpecial === 'ngu_linh') result = 'draw';
-          else { result = 'win'; multiplier = 2; }
-        } else if (dealerScore > 21) {
-          result = 'win';
-        } else if (dealerScore > player.score) {
-          result = 'lose';
-        } else if (dealerScore < player.score) {
-          result = 'win';
-        }
+        const { result, multiplier, specialHand } = XiDachEngine.calculateResult(player, gs.dealer);
 
         const finalWinAmount = bet * multiplier;
         let newPlayerBalance = player.balance;
         if (result === 'win') {
-          await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${playerSpecial || player.score + 'đ'}) x${multiplier}`);
+          await executeTransaction(player.id, finalWinAmount, 'win', `Thắng ván bài (${specialHand || player.score + 'đ'}) x${multiplier}`);
           await executeTransaction(gs.dealer.id, -finalWinAmount, 'lose', `Thua cho ${player.name}`);
           newPlayerBalance = player.balance + finalWinAmount;
           totalDealerDelta -= finalWinAmount;
@@ -498,18 +372,14 @@ export function useXiDachRoom(
     const gs = gameStateRef.current;
     if (gs.dealer.id !== profile?.id) return;
     if (gs.dealer.hand.length >= 5) return alert('Nhà Cái đã đạt giới hạn 5 lá bài!');
-    // Chặn khi TẤT CẢ người chơi đã được xét (không chỉ một người)
+    
     const activePlayers = gs.players.filter((p) => p.id !== '');
     const allChecked = activePlayers.length > 0 && activePlayers.every((p) => p.isChecked);
     if (allChecked) return alert('Tất cả người chơi đã được xét, không thể rút thêm bài!');
-    const newDeck = [...gs.deck];
-    const newCard = newDeck.pop()!;
-    const newHand = [...gs.dealer.hand, newCard];
-    updateRemoteState({
-      ...gs, deck: newDeck,
-      dealer: { ...gs.dealer, hand: newHand, score: Hand.calculateScore(newHand) },
-      lastActionAt: Date.now(),
-    });
+
+    const engine = new XiDachEngine(gs);
+    const newState = engine.dealerHit();
+    updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
   const resetTableToEmpty = useCallback(async () => {
