@@ -44,7 +44,23 @@ export function useXiDachRoom(
   // Fetch initial state + subscribe to realtime updates
   useEffect(() => {
     GameRoomService.fetchGameState(ROOM_ID).then((state) => {
-      if (state) { setGameState(state); gameStateRef.current = state; }
+      if (state) { 
+        setGameState(state); 
+        gameStateRef.current = state; 
+
+        // TỰ CHỮA LÀNH: Nếu bàn bị kẹt (status != ended và lastActionAt quá 2 phút)
+        const STUCK_TIMEOUT = 2 * 60 * 1000; // 2 phút
+        const now = Date.now();
+        if (state.status !== 'ended' && state.lastActionAt && (now - state.lastActionAt > STUCK_TIMEOUT)) {
+          console.warn('[Self-Healing] Phát hiện bàn bị kẹt. Đang tự động Reset...');
+          // Thực hiện reset bàn về trạng thái trống
+          const emptyState = createEmptyState();
+          GameRoomService.updateGameState(ROOM_ID, emptyState).then(() => {
+            setGameState(emptyState);
+            gameStateRef.current = emptyState;
+          });
+        }
+      }
     });
 
     const channel = GameRoomService.subscribeToRoom(ROOM_ID, (state) => {
