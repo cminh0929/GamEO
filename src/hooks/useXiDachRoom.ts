@@ -410,6 +410,10 @@ export function useXiDachRoom(
     updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
+  const resetTableToEmpty = useCallback(async () => {
+    await updateRemoteState(createEmptyState());
+  }, [updateRemoteState]);
+
   const refundAllPlayers = useCallback(async (gs: GameState) => {
     if (!gs.dealer.id) return;
     for (const player of gs.players) {
