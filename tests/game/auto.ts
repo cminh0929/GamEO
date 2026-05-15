@@ -11,14 +11,36 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const ROOM_ID = 'gameo-table-1';
 
-// Mocks
-const DEALER: Profile = { id: 'bot-dealer', username: 'Bot Dealer', balance: 10000000, avatar_url: null };
+// Real Bot IDs from Database
+const DEALER: Profile = { 
+  id: '00000000-0000-4000-a000-000000000000', 
+  username: 'Bot Dealer 👑', 
+  balance: 10000000, 
+  avatar_url: null 
+};
+
 const PLAYERS: Profile[] = Array.from({ length: 7 }, (_, i) => ({
-  id: `bot-${i + 1}`,
+  id: `00000000-0000-4000-a000-00000000000${i + 1}`,
   username: `Bot Player ${i + 1}`,
   balance: 1000000,
   avatar_url: null
 }));
+
+async function botExecuteTransaction(userId: string, amount: number, type: string, description: string) {
+  if (amount === 0) return;
+  console.log(`💸 [TX] ${userId}: ${amount > 0 ? '+' : ''}${amount.toLocaleString()} (${description})`);
+  
+  // Gọi hàm rpc update_balance_v2 (giống hệt như web app)
+  const { error } = await supabase.rpc('update_balance_v2', {
+    p_user_id: userId,
+    p_amount: amount,
+    p_type: type,
+    p_description: description,
+    p_reference_id: `bot-auto-${Date.now()}`
+  });
+
+  if (error) console.error(`❌ Lỗi giao dịch cho ${userId}:`, error.message);
+}
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -101,16 +123,42 @@ async function runAutoGame() {
 
   console.log('⚖️ Đang xét bài tất cả mọi người...');
   const updatedPlayers = [...state.players];
+  let totalDealerDelta = 0;
+  
   for (let i = 0; i < updatedPlayers.length; i++) {
-    if (updatedPlayers[i].id !== '' && !updatedPlayers[i].isChecked) {
-      const { result } = XiDachEngine.calculateResult(updatedPlayers[i], state.dealer);
-      updatedPlayers[i] = { ...updatedPlayers[i], isChecked: true, gameResult: result };
-      console.log(`✅ Xét ${updatedPlayers[i].name}: ${result.toUpperCase()}`);
+    const player = updatedPlayers[i];
+    if (player.id !== '' && !player.isChecked) {
+      const totalTableBets = state.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
+      const settlement = XiDachEngine.calculatePlayerSettlement(player, state.dealer, totalTableBets);
+      
+      // Thực hiện giao dịch thật cho Player
+      await botExecuteTransaction(player.id, settlement.amount, settlement.type, settlement.description);
+      totalDealerDelta -= settlement.amount;
+
+      updatedPlayers[i] = { 
+        ...player, 
+        isChecked: true, 
+        gameResult: settlement.result,
+        balance: Math.max(0, player.balance + settlement.amount) 
+      };
+      console.log(`✅ Xét ${player.name}: ${settlement.result.toUpperCase()} (${settlement.amount > 0 ? '+' : ''}${settlement.amount})`);
     }
   }
-  state = { ...state, players: updatedPlayers, status: 'ended' };
+
+  // Thực hiện giao dịch thật cho Dealer
+  if (totalDealerDelta !== 0 && state.dealer.id) {
+    const dType = totalDealerDelta > 0 ? 'win' : 'lose';
+    await botExecuteTransaction(state.dealer.id, totalDealerDelta, dType, `Kết quả ván bài từ bàn chơi`);
+  }
+
+  state = { 
+    ...state, 
+    players: updatedPlayers, 
+    dealer: { ...state.dealer, balance: state.dealer.balance + totalDealerDelta },
+    status: 'ended' 
+  };
   await GameRoomService.updateGameState(ROOM_ID, state);
-  CLIFormatter.render(state, 'bot-dealer');
+  CLIFormatter.render(state, '00000000-0000-4000-a000-000000000000');
   
   console.log('\n🏁 VÁN BÀI KẾT THÚC!');
 }
