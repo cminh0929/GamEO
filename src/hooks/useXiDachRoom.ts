@@ -345,7 +345,12 @@ export function useXiDachRoom(
     const isAuto = typeof idxOrAuto === 'number' || idxOrAuto === true;
     const targetIdx = typeof idxOrAuto === 'number' ? idxOrAuto : gs.players.findIndex(p => p.id === profile?.id);
 
-    if (targetIdx === -1 || gs.turnIndex !== targetIdx) return;
+    console.log('[stand] Triggered:', { targetIdx, turnIndex: gs.turnIndex, isAuto, profileId: profile?.id });
+
+    if (targetIdx === -1 || gs.turnIndex !== targetIdx) {
+      console.warn('[stand] Rejected: Not your turn or invalid index');
+      return;
+    }
     
     const player = gs.players[targetIdx];
     const score = Hand.calculateScore(player.hand);
@@ -354,10 +359,12 @@ export function useXiDachRoom(
     
     // Manual stand requires 16 points or special hand
     if (!isAuto && !isSpecial && score < 16) {
+      console.warn('[stand] Rejected: Under 16 points (Manual)');
       alert('Bạn phải đủ ít nhất 16 điểm mới được dằn!');
       return;
     }
 
+    console.log('[stand] Executing stand for player', targetIdx, 'score:', score);
     const engine = new XiDachEngine(gs);
     const newState = engine.stand(targetIdx);
     updateRemoteState(newState);

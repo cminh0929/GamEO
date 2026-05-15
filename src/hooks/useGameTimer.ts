@@ -25,7 +25,7 @@ export function useGameTimer({ gameState, profile, stand, isBlocked = false }: U
         setTimeLeft(diff);
         const myPlayerIndex = gameState.players.findIndex((p) => p.id === profile?.id);
         // Guard: don't auto-stand if this tab is blocked (duplicate tab scenario)
-        if (diff === 0 && gameState.turnIndex === myPlayerIndex && !isBlocked) {
+        if (diff <= 0 && gameState.status === 'playing' && gameState.turnIndex === myPlayerIndex && !isBlocked) {
           stand(gameState.turnIndex);
         }
       } else {
