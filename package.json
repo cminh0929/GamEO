@@ -8,9 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:game:cli": "npx tsx tests/game/cli.ts",
-    "test:game:auto": "npx tsx tests/game/auto.ts"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
