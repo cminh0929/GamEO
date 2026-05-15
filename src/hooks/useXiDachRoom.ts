@@ -461,8 +461,15 @@ export function useXiDachRoom(
       await refundAllPlayers(gs);
       await resetTableToEmpty();
     } else if (gs.status === 'playing') {
-      // TRONG VÁN BÀI: Tuyệt đối không hoàn tiền hay reset bàn để tránh Nhà Cái gian lận (Rage Quit)
-      // Hệ thống sẽ ép Nhà Cái thực hiện hành động tự động cho đến khi ván bài kết thúc
+      const activePlayers = gs.players.filter((p) => p.id !== '');
+      const allChecked = activePlayers.length > 0 && activePlayers.every((p) => p.isChecked);
+
+      if (allChecked) {
+        console.log('[handleDealerAFK] All players already checked. Resetting table.');
+        await resetTableToEmpty();
+        return;
+      }
+
       const engine = new XiDachEngine(gs);
       const dealer = gs.dealer;
       const res = engine.canDealerCheck(dealer);
