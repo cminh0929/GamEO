@@ -523,14 +523,32 @@ body {
   border-color: var(--gold);
 }
 
-/* Tọa độ Oval mới cho 7 người chơi (Bỏ 3 ghế dưới) */
-.seat-0 { left: 1%; top: 65%; }
-.seat-1 { left: 3%; top: 35%; }
-.seat-2 { left: 22%; top: 8%; }
-.seat-3 { left: 45%; top: -4%; }
-.seat-4 { left: 68%; top: 8%; }
-.seat-5 { left: 87%; top: 35%; }
-.seat-6 { left: 89%; top: 65%; }
+/* Sắp xếp ghế theo hình vòng cung hướng lên (Nhà cái ở đáy) */
+.seat-0 { left: 5%; top: 55%; }   /* Giữa bên trái */
+.seat-1 { left: 12%; top: 25%; }  /* Trên bên trái */
+.seat-2 { left: 28%; top: 10%; }  /* Trên cùng trái */
+.seat-3 { left: 50%; top: 5%; }   /* Trên cùng chính giữa */
+.seat-4 { left: 72%; top: 10%; }  /* Trên cùng phải */
+.seat-5 { left: 88%; top: 25%; }  /* Trên bên phải */
+.seat-6 { left: 95%; top: 55%; }  /* Giữa bên phải */
+
+.dealer-bubble {
+  bottom: 120%; /* Đẩy lên trên vì dealer ở dưới */
+  top: auto;
+}
+
+.current-turn-label {
+  position: absolute;
+  top: 40%; /* Đưa nhãn lên giữa bàn */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #2ecc71;
+  font-weight: bold;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  text-transform: uppercase;
+}
 
 /* Hand & Cards */
 .hand {
@@ -609,15 +627,14 @@ body {
 .transaction-sidebar {
   position: fixed;
   left: 20px;
-  bottom: 20px;
-  width: 200px;
+  bottom: 30px;
+  width: 220px;
   max-height: 250px;
   background: rgba(0,0,0,0.9);
   border: 1px solid var(--gold);
   border-radius: 15px;
   padding: 12px;
   z-index: 100;
-  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .sidebar-header {
@@ -672,11 +689,11 @@ body {
 /* Bottom Controls */
 .bottom-controls {
   position: fixed;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 30px;
+  right: 40px; /* Chuyển sang bên phải */
   display: flex;
-  gap: 20px;
+  flex-direction: column; /* Xếp dọc các nút để gọn hơn */
+  gap: 12px;
   z-index: 100;
 }
 
