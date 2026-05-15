@@ -20,7 +20,7 @@ const DEALER: Profile = {
 };
 
 const PLAYERS: Profile[] = Array.from({ length: 7 }, (_, i) => ({
-  id: `00000000-0000-4000-a000-00000000000${i + 1}`,
+  id: `00000000-0000-4000-a000-${(i + 1).toString().padStart(12, '0')}`,
   username: `Bot Player ${i + 1}`,
   balance: 1000000,
   avatar_url: null
