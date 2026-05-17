@@ -44,6 +44,12 @@ Tài liệu này đóng vai trò là "Bản khai thông tin" cốt lõi của Ga
 - [x] Quy tắc **Dưới 16 trừ Nhà Cái** (Nhà Cái chỉ cần 15đ để xét/dằn).
 - [x] Luật **>= 28 điểm đền bàn** (Đền tổng cược bàn cho Nhà Cái, tự động tước lượt và chặn rút thêm bài hoàn toàn).
 - [x] Cơ chế **Tự động Dằn bài (Auto-Stand) vô điều kiện** khi hết 30 giây lượt chơi cho người chơi thật.
+- [x] **Dynamic Auto-Scale Engine** sử dụng Hook `useWindowScale` tự động căn chỉnh và co giãn bàn Oval vừa vặn trình duyệt.
+- [x] **Premium Mobile Portrait Stack Layout**: Giao diện dọc cuộn mượt mà (Nhà Cái cố định phía trên, danh sách ghế người chơi xếp Grid 2 cột).
+- [x] **Aspect-Ratio Locking**: Khóa tỉ lệ thông minh theo kích thước thiết bị (**`9:16`** và **`4:6`** tràn màn hình di động, **`3:4`** khóa khung `480px` căn giữa có hiệu ứng viền phát sáng cao cấp).
+- [x] **Thanh Hành Động Nổi Di Động (Mobile Touch Actions)**: Hỗ trợ nút cược nhanh dạng Chip (`10K` - `50K` - `100K` - `Tất Tay`) và các nút hành động lớn dễ chạm (`🟢 RÚT BÀI`, `🔴 DẰN BÀI`, `👑 NHÀ CÁI RÚT`).
+- [x] **Sửa lỗi đè màn hình Xoay ngang (Landscape overlap)**: Tự động chuyển đổi bảng Lịch sử bàn sang dạng Slide-out Drawer che phủ trên cùng có nút đóng mở khi chơi trên điện thoại xoay ngang/tablet.
+- [x] **Tương thích W3C CSS**: Định nghĩa chuẩn hóa thuộc tính `mask` bên cạnh thuộc tính `-webkit-mask` của WebKit.
 
 ### 🟡 Đang phát triển (In-Progress)
 - [ ] **Admin Dashboard**: Giao diện quản lý dòng tiền, điều chỉnh số dư và phát hiện giao dịch bất thường (Anomaly Detection), kích hoạt bằng phím tắt `ctrl + /` cho tài khoản `admin`.
@@ -54,5 +60,6 @@ Tài liệu này đóng vai trò là "Bản khai thông tin" cốt lõi của Ga
 - [ ] Xây dựng game bài thứ hai: **Tài Xỉu (Dice Game)** hoặc **Mậu Binh**.
 
 ## 6. Handoff State (Phiên làm việc hiện tại)
-- **Tập tin đang mở**: [useXiDachRoom.ts](file:///d:/01_Dev/_Workspaces/Active/GamEO/src/hooks/useXiDachRoom.ts#L440)
-- **Mục tiêu phiên kế tiếp**: Triển khai thiết kế giao diện và logic cho Admin Panel (`AdminPanel.tsx` và `PlatformShell.tsx` listener).
+- **Tập tin đang mở**: [page.tsx](file:///d:/01_Dev/_Workspaces/Active/GamEO/src/app/games/xi-dach/page.tsx)
+- **Mục tiêu phiên kế tiếp**: Triển khai thiết kế giao diện và logic cho Admin Panel (`AdminPanel.tsx` và `PlatformShell.tsx` listener) kích hoạt bằng tổ hợp phím `ctrl + /` cho các vai trò `admin`.
+
