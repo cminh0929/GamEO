@@ -301,7 +301,7 @@ export function useXiDachRoom(
   }, [profile, executeTransaction, updateRemoteState, refreshLogs]);
 
   // Xét tất cả người chơi còn lại cùng lúc (dùng sau khi tất cả đã stand/bust)
-  const checkAllPlayers = useCallback(async () => {
+  const checkAllPlayers = useCallback(async (isAuto = false) => {
     if (isCheckingRef.current) return;
     isCheckingRef.current = true;
     const gs = gameStateRef.current;
@@ -309,7 +309,7 @@ export function useXiDachRoom(
       const engine = new XiDachEngine(gs);
       const checkStatus = engine.canDealerCheck(gs.dealer);
       if (!checkStatus.allowed) {
-        alert(checkStatus.reason);
+        if (!isAuto) alert(checkStatus.reason);
         return;
       }
 
@@ -353,7 +353,7 @@ export function useXiDachRoom(
       }
 
       if (anySettled) {
-        updatedLogs.push(`[${time}] Nhà Cái đã hoàn thành XÉT CẢ BÀN 👑`);
+        updatedLogs.push(`[${time}] ${isAuto ? '[Tự động] ' : ''}Nhà Cái đã hoàn thành XÉT CẢ BÀN 👑`);
         if (updatedLogs.length > 50) updatedLogs.shift();
       }
 
@@ -449,12 +449,20 @@ export function useXiDachRoom(
         logDebug(`Player ${player.name} AFK (score < 16), performing Auto-Hit`);
         const engine = new XiDachEngine(gs);
         const newState = engine.hit(idx);
+        if (newState.actionLogs && newState.actionLogs.length > 0) {
+          const lastIdx = newState.actionLogs.length - 1;
+          newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace(`${player.name} rút lá`, `[Tự động] ${player.name} rút lá`);
+        }
         await updateRemoteState(newState);
       } else {
         // Đã đủ tuổi hoặc đạt giới hạn bài, tự động Dằn (Stand)
         logDebug(`Player ${player.name} AFK (sufficient/max), performing Auto-Stand`);
         const engine = new XiDachEngine(gs);
         const newState = engine.stand(idx);
+        if (newState.actionLogs && newState.actionLogs.length > 0) {
+          const lastIdx = newState.actionLogs.length - 1;
+          newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace(`${player.name} dằn bài`, `[Tự động] ${player.name} dằn bài`);
+        }
         await updateRemoteState(newState);
       }
     } finally {
@@ -492,17 +500,27 @@ export function useXiDachRoom(
     updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
-  const dealerHit = useCallback(() => {
+  const dealerHit = useCallback((isAuto = false) => {
     const gs = gameStateRef.current;
-    if (gs.dealer.id !== profile?.id) return;
-    if (gs.dealer.hand.length >= 5) return alert('Nhà Cái đã đạt giới hạn 5 lá bài!');
+    if (gs.dealer.id !== profile?.id && !isAuto) return;
+    if (gs.dealer.hand.length >= 5) {
+      if (!isAuto) alert('Nhà Cái đã đạt giới hạn 5 lá bài!');
+      return;
+    }
 
     const activePlayers = gs.players.filter((p) => p.id !== '');
     const allChecked = activePlayers.length > 0 && activePlayers.every((p) => p.isChecked);
-    if (allChecked) return alert('Tất cả người chơi đã được xét, không thể rút thêm bài!');
+    if (allChecked) {
+      if (!isAuto) alert('Tất cả người chơi đã được xét, không thể rút thêm bài!');
+      return;
+    }
 
     const engine = new XiDachEngine(gs);
     const newState = engine.dealerHit();
+    if (isAuto && newState.actionLogs && newState.actionLogs.length > 0) {
+      const lastIdx = newState.actionLogs.length - 1;
+      newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace('Nhà Cái rút thêm lá', '[Tự động] Nhà Cái rút thêm lá');
+    }
     updateRemoteState(newState);
   }, [profile, updateRemoteState]);
 
@@ -510,11 +528,14 @@ export function useXiDachRoom(
     await updateRemoteState(createEmptyState());
   }, [updateRemoteState]);
 
-  const refundAllPlayers = useCallback(async (gs: GameState) => {
+  const refundAllPlayers = useCallback(async (gs: GameState, isAuto = false) => {
     if (!gs.dealer.id) return;
     const processedTx = gs.processedTransactions || [];
     const roundKey = gs.roundId || `reset-${gs.lastActionAt || 0}`;
     let hasChanged = false;
+
+    const updatedLogs = [...(gs.actionLogs || [])];
+    const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     for (const player of gs.players) {
       if (player.id && player.currentBet > 0) {
@@ -527,6 +548,9 @@ export function useXiDachRoom(
           await executeTransaction(gs.dealer.id, -player.currentBet, 'refund', `Hoàn trả tiền cược cho ${player.name}`);
           processedTx.push(txId);
           hasChanged = true;
+
+          updatedLogs.push(`[${time}] ${isAuto ? '[Tự động] ' : ''}Hoàn trả cược $${player.currentBet.toLocaleString()} cho ${player.name} ↩️`);
+          if (updatedLogs.length > 50) updatedLogs.shift();
         } catch (err) {
           console.error('[refundAllPlayers] Failed to refund player', player.id, err);
         }
@@ -535,7 +559,7 @@ export function useXiDachRoom(
 
     if (hasChanged) {
       // Cập nhật lại state với danh sách tx đã xử lý để các client khác biết
-      await updateRemoteState({ ...gs, processedTransactions: processedTx });
+      await updateRemoteState({ ...gs, processedTransactions: processedTx, actionLogs: updatedLogs });
     }
   }, [executeTransaction, updateRemoteState]);
 
@@ -545,11 +569,11 @@ export function useXiDachRoom(
 
     if (gs.status === 'ended') {
       logDebug('Phase: ended. Ensuring settlement before reset.');
-      await checkAllPlayers(); // Quyết toán tiền nong cho tất cả trước khi dọn bàn
+      await checkAllPlayers(true); // Quyết toán tiền nong cho tất cả trước khi dọn bàn
       await resetTableToEmpty();
     } else if (gs.status === 'betting') {
       logDebug('Phase: betting. Refunding and resetting.');
-      await refundAllPlayers(gs);
+      await refundAllPlayers(gs, true);
       await resetTableToEmpty();
     } else if (gs.status === 'playing') {
       const activePlayers = gs.players.filter((p) => p.id !== '');
@@ -567,10 +591,10 @@ export function useXiDachRoom(
 
       if (res.allowed) {
         logDebug('Anti-Cheat: Auto-checking all players.');
-        await checkAllPlayers();
+        await checkAllPlayers(true);
       } else {
         logDebug('Anti-Cheat: Auto-hitting for Dealer.');
-        await dealerHit();
+        await dealerHit(true);
       }
     }
   }, [resetTableToEmpty, refundAllPlayers, checkAllPlayers, dealerHit]);

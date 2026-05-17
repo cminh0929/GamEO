@@ -312,7 +312,7 @@ function XiDachGame() {
       {/* Bottom controls */}
       <div className="bottom-controls">
         {showCheckAll && (
-          <button className="btn-main" style={{ background: 'linear-gradient(135deg,#e74c3c,#c0392b)' }} onClick={actions.checkAllPlayers}>
+          <button className="btn-main" style={{ background: 'linear-gradient(135deg,#e74c3c,#c0392b)' }} onClick={() => actions.checkAllPlayers(false)}>
             ⚖️ XÉT TẤT CẢ
           </button>
         )}
