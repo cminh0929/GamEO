@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:ui": "next dev -p 5011",
+    "dev:playground": "next dev -p 5011",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
