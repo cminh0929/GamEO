@@ -484,7 +484,7 @@ export function useXiDachRoom(
       const newState = engine.stand(idx, true); // Bỏ qua mốc 16 điểm khi tự động dằn
       if (newState.actionLogs && newState.actionLogs.length > 0) {
         const lastIdx = newState.actionLogs.length - 1;
-        newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace(`${player.name} dằn bài`, `[Tự động] ${player.name} dằn bài`);
+        newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace(`${player.name} đã dằn bài`, `[Tự động] ${player.name} đã dằn bài`);
       }
       await updateRemoteState(newState);
     } finally {
@@ -573,7 +573,7 @@ export function useXiDachRoom(
     const newState = engine.dealerHit();
     if (isAuto && newState.actionLogs && newState.actionLogs.length > 0) {
       const lastIdx = newState.actionLogs.length - 1;
-      newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace('Nhà Cái rút thêm lá', '[Tự động] Nhà Cái rút thêm lá');
+      newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace('Nhà Cái đã rút thêm 1 lá bài', '[Tự động] Nhà Cái đã rút thêm 1 lá bài');
     }
     updateRemoteState(newState);
   }, [profile, updateRemoteState]);

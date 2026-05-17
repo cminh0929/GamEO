@@ -163,7 +163,10 @@ export class XiDachEngine {
 
   hit(idx: number): GameState {
     const player = this.state.players[idx];
-    const newDeck = [...this.state.deck];
+    let newDeck = [...this.state.deck];
+    if (newDeck.length === 0) {
+      newDeck = Deck.createShuffled();
+    }
     const newCard = newDeck.pop()!;
     const newHand = [...player.hand, newCard];
     const newScore = Hand.calculateScore(newHand);
@@ -172,8 +175,7 @@ export class XiDachEngine {
 
     this.updateLastAction();
     this.state.deck = newDeck;
-    const suitSymbol = newCard.suit === 'hearts' ? '♥️' : newCard.suit === 'diamonds' ? '♦️' : newCard.suit === 'clubs' ? '♣️' : '♠️';
-    this.addLog(`${player.name} rút lá ${newCard.rank}${suitSymbol} (${newScore}đ) 🃏`);
+    this.addLog(`${player.name} đã rút thêm 1 lá bài 🃏`);
 
     // Logic Phân loại bài
     if (newScore >= 28) {
@@ -206,25 +208,27 @@ export class XiDachEngine {
     if (player.status !== 'bust') {
       player.status = 'stay';
     }
-    this.addLog(`${player.name} dằn bài (${player.score}đ) ✋`);
+    this.addLog(`${player.name} đã dằn bài ✋`);
     return this.getNextTurnState();
   }
 
   dealerHit(): GameState {
-    const newDeck = [...this.state.deck];
+    let newDeck = [...this.state.deck];
+    if (newDeck.length === 0) {
+      newDeck = Deck.createShuffled();
+    }
     const newCard = newDeck.pop()!;
     const newHand = [...this.state.dealer.hand, newCard];
     
     this.updateLastAction();
     this.state.deck = newDeck;
     const newScore = Hand.calculateScore(newHand);
-    const suitSymbol = newCard.suit === 'hearts' ? '♥️' : newCard.suit === 'diamonds' ? '♦️' : newCard.suit === 'clubs' ? '♣️' : '♠️';
     this.state.dealer = {
       ...this.state.dealer,
       hand: newHand,
       score: newScore
     };
-    this.addLog(`Nhà Cái rút thêm lá ${newCard.rank}${suitSymbol} (${newScore}đ) 🃏`);
+    this.addLog(`Nhà Cái đã rút thêm 1 lá bài 🃏`);
     return this.state;
   }
 
