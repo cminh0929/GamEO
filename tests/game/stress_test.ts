@@ -253,6 +253,24 @@ async function main() {
     await new Promise(r => setTimeout(r, 1500));
   }
   
+  console.log('\n🧹 ĐANG DỌN BÀN CHƠI (RESET TO EMPTY)...');
+  const emptyState: GameState = {
+    deck: [],
+    dealer: { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 },
+    players: Array.from({ length: 7 }, (_, i) => ({
+      id: '', name: `Vị trí ${i + 1}`, hand: [], score: 0, status: 'playing',
+      isChecked: false, gameResult: null, balance: 0, currentBet: 0,
+    })),
+    status: 'ended',
+    turnIndex: 0,
+    turnDeadline: 0,
+    lastActionAt: Date.now(),
+    processedTransactions: [],
+    actionLogs: ['[Hệ thống] Bàn chơi đã được tự động dọn sạch sau đợt kiểm thử 🧹']
+  };
+  await updateGameState(emptyState);
+  console.log('✅ Đã dọn bàn chơi sạch sẽ!');
+  
   console.log('\n🌟 TẤT CẢ KỊCH BẢN ĐÃ HOÀN TẤT CHUẨN XÁC!');
 }
 
