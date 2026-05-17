@@ -57,8 +57,8 @@ export function useXiDachRoom(
         // TỰ CHỮA LÀNH & XỬ PHẠT: Nếu bàn bị kẹt (status != ended và lastActionAt quá 3 phút)
         const STUCK_TIMEOUT = 3 * 60 * 1000; // 3 phút để chống lệch giờ máy khách (Clock Drift)
         const now = Date.now();
-        const hasBots = state.dealer.id.startsWith('00000000-0000-4000-a000-') || 
-                        state.players.some(p => p.id.startsWith('00000000-0000-4000-a000-'));
+        const hasBots = state.dealer.id.startsWith('00000000-0000-4000-') || 
+                        state.players.some(p => p.id.startsWith('00000000-0000-4000-'));
         
         if (!hasBots && state.status !== 'ended' && state.lastActionAt && (now - state.lastActionAt > STUCK_TIMEOUT)) {
           console.warn('[Self-Healing] Phát hiện bàn bị kẹt. Đang xử phạt và Reset...');
@@ -474,7 +474,7 @@ export function useXiDachRoom(
     if (!player || player.id === '') return; // Guard for empty seats
 
     // Guard: ignore bots in main source, bots are only activated in tests
-    if (player.id.startsWith('00000000-0000-4000-a000-')) return;
+    if (player.id.startsWith('00000000-0000-4000-')) return;
 
     isProcessingAutoAction.current = true;
     try {
@@ -622,7 +622,7 @@ export function useXiDachRoom(
     if (gs.dealer.id === '') return;
 
     // Guard: ignore bots in main source, bots are only activated in tests
-    if (gs.dealer.id.startsWith('00000000-0000-4000-a000-')) {
+    if (gs.dealer.id.startsWith('00000000-0000-4000-')) {
       logDebug(`[AFK Guard] Dealer ${gs.dealer.name} là Bot. Bỏ qua AFK tự động trong source chính.`);
       return;
     }
@@ -667,7 +667,7 @@ export function useXiDachRoom(
     if (!player.id) return;
 
     // Guard: ignore bots in main source, bots are only activated in tests
-    if (player.id.startsWith('00000000-0000-4000-a000-')) {
+    if (player.id.startsWith('00000000-0000-4000-')) {
       logDebug(`[AFK Guard] Player ${player.name} là Bot. Bỏ qua AFK tự động trong source chính.`);
       return;
     }
