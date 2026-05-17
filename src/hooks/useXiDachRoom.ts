@@ -54,8 +54,8 @@ export function useXiDachRoom(
         setGameState(state);
         gameStateRef.current = state;
 
-        // TỰ CHỮA LÀNH & XỬ PHẠT: Nếu bàn bị kẹt (status != ended và lastActionAt quá 1 phút)
-        const STUCK_TIMEOUT = 1 * 60 * 1000; // 1 phút
+        // TỰ CHỮA LÀNH & XỬ PHẠT: Nếu bàn bị kẹt (status != ended và lastActionAt quá 3 phút)
+        const STUCK_TIMEOUT = 3 * 60 * 1000; // 3 phút để chống lệch giờ máy khách (Clock Drift)
         const now = Date.now();
         const hasBots = state.dealer.id.startsWith('00000000-0000-4000-a000-') || 
                         state.players.some(p => p.id.startsWith('00000000-0000-4000-a000-'));
