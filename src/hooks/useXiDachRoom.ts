@@ -448,8 +448,15 @@ export function useXiDachRoom(
       return;
     }
 
-    // Time limit check: manual hit is blocked if turn deadline has passed
-    if (gs.turnDeadline && Date.now() > gs.turnDeadline) {
+    // Check if the player is currently under the mandatory score limit (< 16 points and < 5 cards)
+    const score = Hand.calculateScore(player.hand);
+    const special = Hand.checkSpecialHands(player);
+    const isSpecial = special === 'xi_bang' || special === 'xi_dach' || special === 'ngu_linh';
+    const isUnderLimit = !isSpecial && score < 16 && player.hand.length < 5;
+
+    // Time limit check: manual hit is blocked if turn deadline has passed,
+    // unless they are under 16 points and legally required to draw cards to reach 16.
+    if (!isUnderLimit && gs.turnDeadline && Date.now() > gs.turnDeadline) {
       console.warn('[hit] Rejected: Turn deadline has passed');
       alert('Đã hết thời gian lượt chơi của bạn!');
       return;
