@@ -92,6 +92,10 @@ function XiDachGame() {
 
   // Show "XÉT TẤT CẢ" when all seated players have finished their turns
   const isDealer = gameState.dealer.id === profile?.id;
+  const mySeatIndex = gameState.players.findIndex((p) => p.id === profile?.id);
+  const myPlayer = mySeatIndex !== -1 ? gameState.players[mySeatIndex] : null;
+  const isMyTurn = gameState.status === 'playing' && gameState.turnIndex === mySeatIndex && mySeatIndex !== -1;
+
   const seatedPlayers = gameState.players.filter((p) => p.id !== '');
   const allPlayersDone = seatedPlayers.length > 0 &&
     seatedPlayers.every((p) => p.status === 'stay' || p.status === 'bust') &&
@@ -371,6 +375,60 @@ function XiDachGame() {
       <button className="btn-toggle-logs" onClick={() => setShowLogs(!showLogs)}>
         📜
       </button>
+
+      {/* Mobile-only / Touch-friendly Floating Active Controls */}
+      {(isMyTurn || (gameState.status === 'betting' && myPlayer && myPlayer.currentBet === 0) || (isDealer && gameState.status === 'playing' && gameState.turnIndex === -1)) && (
+        <div className="mobile-touch-actions-bar">
+          {/* 1. BETTING MODE: Quick bet chips */}
+          {gameState.status === 'betting' && myPlayer && myPlayer.currentBet === 0 && (
+            <div className="touch-chip-container">
+              <span className="touch-label">🪙 CƯỢC NHANH:</span>
+              <div className="touch-chips-grid">
+                {[10000, 50000, 100000, 200000, 500000].map((amount) => {
+                  const displayVal = amount >= 1000000 ? `${amount / 1000000}M` : `${amount / 1000}K`;
+                  return (
+                    <button
+                      key={amount}
+                      className="btn-touch-chip"
+                      onClick={() => actions.placeBet(mySeatIndex, amount)}
+                      disabled={myPlayer.balance < amount}
+                    >
+                      {displayVal}
+                    </button>
+                  );
+                })}
+                <button
+                  className="btn-touch-chip max"
+                  onClick={() => actions.placeBet(mySeatIndex, myPlayer.balance)}
+                >
+                  TẤT TAY
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2. PLAYING MODE (Player's turn): Large red/green touch action buttons */}
+          {isMyTurn && (
+            <div className="touch-action-buttons">
+              <button className="btn-touch-large stand" onClick={() => actions.stand(mySeatIndex)}>
+                🔴 DẰN BÀI (STAND)
+              </button>
+              <button className="btn-touch-large hit" onClick={() => actions.hit(mySeatIndex)}>
+                🟢 RÚT BÀI (HIT)
+              </button>
+            </div>
+          )}
+
+          {/* 3. PLAYING MODE (Dealer's turn): Large gold hit button */}
+          {isDealer && gameState.status === 'playing' && gameState.turnIndex === -1 && (
+            <div className="touch-action-buttons">
+              <button className="btn-touch-large hit dealer" onClick={() => actions.dealerHit()}>
+                👑 NHÀ CÁI RÚT BÀI
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bottom controls */}
       <div className="bottom-controls">
