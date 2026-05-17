@@ -57,7 +57,10 @@ export function useXiDachRoom(
         // TỰ CHỮA LÀNH & XỬ PHẠT: Nếu bàn bị kẹt (status != ended và lastActionAt quá 1 phút)
         const STUCK_TIMEOUT = 1 * 60 * 1000; // 1 phút
         const now = Date.now();
-        if (state.status !== 'ended' && state.lastActionAt && (now - state.lastActionAt > STUCK_TIMEOUT)) {
+        const hasBots = state.dealer.id.startsWith('00000000-0000-4000-a000-') || 
+                        state.players.some(p => p.id.startsWith('00000000-0000-4000-a000-'));
+        
+        if (!hasBots && state.status !== 'ended' && state.lastActionAt && (now - state.lastActionAt > STUCK_TIMEOUT)) {
           console.warn('[Self-Healing] Phát hiện bàn bị kẹt. Đang xử phạt và Reset...');
 
           const processStuckPenalty = async () => {
@@ -262,6 +265,15 @@ export function useXiDachRoom(
       if (!processedTx.includes(playerTxId)) {
         await executeTransaction(player.id, settlement.amount, settlement.type, settlement.description);
         processedTx.push(playerTxId);
+        // Lưu trạng thái ngay lập tức sau khi giao dịch Player thành công để tránh lỗi xét lại gây double charge
+        newPlayerBalance = Math.max(0, player.balance + settlement.amount);
+        const intermediatePlayers = [...gs.players];
+        intermediatePlayers[idx] = { ...player, balance: newPlayerBalance };
+        await updateRemoteState({
+          ...gs,
+          players: intermediatePlayers,
+          processedTransactions: processedTx,
+        });
       }
       newPlayerBalance = Math.max(0, player.balance + settlement.amount);
 
@@ -282,7 +294,7 @@ export function useXiDachRoom(
       if (updatedLogs.length > 50) updatedLogs.shift();
 
       updatedPlayers[idx] = { ...player, isChecked: true, gameResult: settlement.result, balance: newPlayerBalance };
-      updateRemoteState({
+      await updateRemoteState({
         ...gs,
         players: updatedPlayers,
         dealer: { ...gs.dealer, balance: gs.dealer.balance - settlement.amount },
@@ -340,16 +352,25 @@ export function useXiDachRoom(
         if (!processedTx.includes(txId)) {
           await executeTransaction(player.id, settlement.amount, settlement.type, settlement.description);
           processedTx.push(txId);
+          // Lưu trạng thái của từng người ngay lập tức để tránh lỗi double charge nếu người tiếp theo bị lỗi
+          newPlayerBalance = Math.max(0, player.balance + settlement.amount);
+          updatedPlayers[idx] = { ...player, isChecked: true, gameResult: settlement.result, balance: newPlayerBalance };
+          await updateRemoteState({
+            ...gs,
+            players: updatedPlayers,
+            processedTransactions: processedTx,
+            lastActionAt: Date.now(),
+          });
+        } else {
+          newPlayerBalance = Math.max(0, player.balance + settlement.amount);
+          updatedPlayers[idx] = { ...player, isChecked: true, gameResult: settlement.result, balance: newPlayerBalance };
         }
-        newPlayerBalance = Math.max(0, player.balance + settlement.amount);
         totalDealerDelta -= settlement.amount;
 
         const outcomeText = settlement.amount > 0 ? `Thắng +$${settlement.amount.toLocaleString()}` : (settlement.amount < 0 ? `Thua -$${Math.abs(settlement.amount).toLocaleString()}` : 'Hòa 🤝');
         updatedLogs.push(`[${time}] Nhà Cái xét bài ${player.name}: ${outcomeText} (${player.score}đ vs ${gs.dealer.score}đ)`);
         if (updatedLogs.length > 50) updatedLogs.shift();
         anySettled = true;
-
-        updatedPlayers[idx] = { ...player, isChecked: true, gameResult: settlement.result, balance: newPlayerBalance };
       }
 
       if (anySettled) {
@@ -366,7 +387,7 @@ export function useXiDachRoom(
         processedTx.push(dealerTxId);
       }
 
-      updateRemoteState({
+      await updateRemoteState({
         ...gs,
         players: updatedPlayers,
         dealer: { ...gs.dealer, balance: gs.dealer.balance + totalDealerDelta },
@@ -420,6 +441,13 @@ export function useXiDachRoom(
     const gs = gameStateRef.current;
     if (gs.turnIndex !== idx) return;
     const player = gs.players[idx];
+
+    // Authorization check: only active player or admin can hit
+    if (player.id !== profile?.id && !isAdmin) {
+      console.warn('[hit] Rejected: Unauthorized hit action');
+      return;
+    }
+
     if (player.hand.length >= 5) return alert('Đã đạt giới hạn tối đa 5 lá bài!');
 
     const engine = new XiDachEngine(gs);
@@ -437,6 +465,9 @@ export function useXiDachRoom(
 
     const player = gs.players[idx];
     if (!player || player.id === '') return; // Guard for empty seats
+
+    // Guard: ignore bots in main source, bots are only activated in tests
+    if (player.id.startsWith('00000000-0000-4000-a000-')) return;
 
     const score = Hand.calculateScore(player.hand);
     const special = Hand.checkSpecialHands(player);
@@ -483,6 +514,13 @@ export function useXiDachRoom(
     }
 
     const player = gs.players[targetIdx];
+
+    // Authorization check: only active player or admin or automated system (isAuto) can stand
+    if (!isAuto && player.id !== profile?.id && !isAdmin) {
+      console.warn('[stand] Rejected: Unauthorized manual stand');
+      return;
+    }
+
     const score = Hand.calculateScore(player.hand);
     const special = Hand.checkSpecialHands(player);
     const isSpecial = special === 'xi_bang' || special === 'xi_dach' || special === 'ngu_linh';
@@ -498,7 +536,7 @@ export function useXiDachRoom(
     const engine = new XiDachEngine(gs);
     const newState = engine.stand(targetIdx);
     updateRemoteState(newState);
-  }, [profile, updateRemoteState]);
+  }, [profile, isAdmin, updateRemoteState]);
 
   const dealerHit = useCallback((isAuto = false) => {
     const gs = gameStateRef.current;
@@ -567,6 +605,12 @@ export function useXiDachRoom(
     const gs = gameStateRef.current;
     if (gs.dealer.id === '') return;
 
+    // Guard: ignore bots in main source, bots are only activated in tests
+    if (gs.dealer.id.startsWith('00000000-0000-4000-a000-')) {
+      logDebug(`[AFK Guard] Dealer ${gs.dealer.name} là Bot. Bỏ qua AFK tự động trong source chính.`);
+      return;
+    }
+
     if (gs.status === 'ended') {
       logDebug('Phase: ended. Ensuring settlement before reset.');
       await checkAllPlayers(true); // Quyết toán tiền nong cho tất cả trước khi dọn bàn
@@ -605,6 +649,12 @@ export function useXiDachRoom(
 
     const player = gs.players[idx];
     if (!player.id) return;
+
+    // Guard: ignore bots in main source, bots are only activated in tests
+    if (player.id.startsWith('00000000-0000-4000-a000-')) {
+      logDebug(`[AFK Guard] Player ${player.name} là Bot. Bỏ qua AFK tự động trong source chính.`);
+      return;
+    }
 
     const isOffline = !allPresent.some(u => u.id === player.id);
     const processedTx = gs.processedTransactions || [];
