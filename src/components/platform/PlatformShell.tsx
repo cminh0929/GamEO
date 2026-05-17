@@ -11,7 +11,7 @@ import { TCChat } from './TCChat';
 import { PRESET_AVATARS } from '../../lib/constants';
 
 export function PlatformShell() {
-  const { profile, setProfile, isAdmin } = useAuth();
+  const { profile, setProfile, isAdmin, bypassOrientation, setBypassOrientation } = useAuth();
   const pathname = usePathname();
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -94,13 +94,32 @@ export function PlatformShell() {
       )}
 
       {/* Orientation Guard for Mobile */}
-      <div className="orientation-guard">
-        <div className="og-icon">🔄</div>
-        <h2 className="og-title">Xoay ngang màn hình</h2>
-        <p className="og-desc">
-          Vui lòng xoay ngang điện thoại để có trải nghiệm chơi bài tốt nhất tại GAMEO.
-        </p>
-      </div>
+      {!bypassOrientation && (
+        <div className="orientation-guard">
+          <div className="og-icon">🔄</div>
+          <h2 className="og-title">Xoay ngang màn hình</h2>
+          <p className="og-desc">
+            Vui lòng xoay ngang điện thoại để có trải nghiệm chơi bài tốt nhất tại GAMEO.
+          </p>
+          <button
+            onClick={() => setBypassOrientation(true)}
+            style={{
+              marginTop: '1.2rem',
+              padding: '10px 20px',
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '20px',
+              color: '#d4af37',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            Tiếp tục chơi dọc (Dạng danh sách) 📱
+          </button>
+        </div>
+      )}
 
       <TCChat />
     </>

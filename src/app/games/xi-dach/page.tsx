@@ -13,6 +13,7 @@ import { DealerArea } from '../../../components/xi-dach/DealerArea';
 import { PlayerSeat } from '../../../components/xi-dach/PlayerSeat';
 import { SpectatorPanel } from '../../../components/xi-dach/SpectatorPanel';
 import { ChatPanel } from '../../../components/xi-dach/ChatPanel';
+import { useWindowScale } from '../../../hooks/useWindowScale';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,8 @@ function BlockedTabScreen() {
 
 // ─── Main Game Page ───────────────────────────────────────────────────────────
 function XiDachGame() {
-  const { session, profile, isAdmin } = useAuth();
+  const { session, profile, isAdmin, bypassOrientation } = useAuth();
+  const scale = useWindowScale();
   const { logs, executeTransaction, refreshLogs } = useTransactions(session?.user.id);
   const { gameState, actions } = useXiDachRoom(profile, executeTransaction, refreshLogs, isAdmin);
   const { isBlocked } = useTabGuard(session?.user.id ?? null, ROOM_ID);
@@ -70,6 +72,17 @@ function XiDachGame() {
   const [showLogs, setShowLogs] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'transactions' | 'actions'>('actions');
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  const [isPortrait, setIsPortrait] = React.useState(false);
+
+  useEffect(() => {
+    const checkPortrait = () => {
+      setIsPortrait(window.innerHeight > window.innerWidth);
+    };
+    window.addEventListener('resize', checkPortrait);
+    checkPortrait();
+    return () => window.removeEventListener('resize', checkPortrait);
+  }, []);
 
   useEffect(() => {
     if (showLogs && activeTab === 'actions') {
@@ -154,16 +167,15 @@ function XiDachGame() {
   // ── Blocked tab overlay ──────────────────────────────────────────────────
   if (isBlocked) return <BlockedTabScreen />;
 
-  return (
-    <main className="casino-container">
-      {/* Bàn chơi chính (Oval) */}
-      <div className="casino-table">
-        {/* Thảm xanh trung tâm */}
-        <div className="table-felt">
-          <div className="felt-inner">
-            <div className="table-logo">GAMEO PREMIUM</div>
+  const showPortraitLayout = isPortrait && bypassOrientation;
 
-            {/* Nhà Cái */}
+  return (
+    <main className={`casino-container ${showPortraitLayout ? 'portrait-mode' : ''}`}>
+      {showPortraitLayout ? (
+        /* Portrait List/Grid View */
+        <div className="portrait-game-board" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', gap: '16px' }}>
+          {/* Dealer area at the top */}
+          <div className="portrait-dealer-sticky" style={{ background: 'rgba(10,10,10,0.95)', borderBottom: '1px solid rgba(212,175,55,0.2)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <DealerArea
               dealer={gameState.dealer}
               gameState={gameState}
@@ -175,37 +187,88 @@ function XiDachGame() {
               onKick={actions.kickPlayer}
               isAdmin={isAdmin}
             />
-
-            {/* Game Status */}
-            <div className="game-status-msg">
+            <div className="portrait-status-bar" style={{ textAlign: 'center', color: '#d4af37', fontWeight: 900, fontSize: '0.85rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
               {gameState.status === 'betting' && '⌛ ĐANG ĐẶT CƯỢC...'}
               {gameState.status === 'playing' && (
                 gameState.turnIndex === -1 ? '👑 LƯỢT NHÀ CÁI' : '🎴 LƯỢT NGƯỜI CHƠI'
               )}
             </div>
           </div>
-        </div>
 
-        {/* 7 Ghế người chơi */}
-        {gameState.players.map((player, idx) => (
-          <PlayerSeat
-            key={idx}
-            player={player}
-            index={idx}
-            gameState={gameState}
-            profile={profile}
-            timeLeft={timeLeft}
-            chatBubble={bubbles[player.id]}
-            onSit={(i) => actions.takeRole('player', i)}
-            onKick={actions.kickPlayer}
-            onPlaceBet={actions.placeBet}
-            onHit={actions.hit}
-            onStand={actions.stand}
-            onCheckPlayer={actions.checkPlayer}
-            isAdmin={isAdmin}
-          />
-        ))}
-      </div>
+          {/* Players in a gorgeous scrollable grid */}
+          <div className="portrait-players-grid" style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px', paddingBottom: '90px' }}>
+            {gameState.players.map((player, idx) => (
+              <PlayerSeat
+                key={idx}
+                player={player}
+                index={idx}
+                gameState={gameState}
+                profile={profile}
+                timeLeft={timeLeft}
+                chatBubble={bubbles[player.id]}
+                onSit={(i) => actions.takeRole('player', i)}
+                onKick={actions.kickPlayer}
+                onPlaceBet={actions.placeBet}
+                onHit={actions.hit}
+                onStand={actions.stand}
+                onCheckPlayer={actions.checkPlayer}
+                isAdmin={isAdmin}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* Standard Desktop/Landscape Oval Layout */
+        <div className="casino-table" style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+          {/* Thảm xanh trung tâm */}
+          <div className="table-felt">
+            <div className="felt-inner">
+              <div className="table-logo">GAMEO PREMIUM</div>
+
+              {/* Nhà Cái */}
+              <DealerArea
+                dealer={gameState.dealer}
+                gameState={gameState}
+                profile={profile}
+                chatBubble={bubbles[gameState.dealer.id]}
+                onDealerHit={actions.dealerHit}
+                onResetTable={actions.resetTableToEmpty}
+                onTakeDealer={() => actions.takeRole('dealer')}
+                onKick={actions.kickPlayer}
+                isAdmin={isAdmin}
+              />
+
+              {/* Game Status */}
+              <div className="game-status-msg">
+                {gameState.status === 'betting' && '⌛ ĐANG ĐẶT CƯỢC...'}
+                {gameState.status === 'playing' && (
+                  gameState.turnIndex === -1 ? '👑 LƯỢT NHÀ CÁI' : '🎴 LƯỢT NGƯỜI CHƠI'
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 7 Ghế người chơi */}
+          {gameState.players.map((player, idx) => (
+            <PlayerSeat
+              key={idx}
+              player={player}
+              index={idx}
+              gameState={gameState}
+              profile={profile}
+              timeLeft={timeLeft}
+              chatBubble={bubbles[player.id]}
+              onSit={(i) => actions.takeRole('player', i)}
+              onKick={actions.kickPlayer}
+              onPlaceBet={actions.placeBet}
+              onHit={actions.hit}
+              onStand={actions.stand}
+              onCheckPlayer={actions.checkPlayer}
+              isAdmin={isAdmin}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Sidebar giao dịch - Toggleable on mobile */}
       <div className={`transaction-sidebar ${showLogs ? 'is-open' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>

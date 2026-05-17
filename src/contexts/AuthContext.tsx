@@ -11,6 +11,8 @@ interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   setProfile: React.Dispatch<React.SetStateAction<Profile | null>>;
+  bypassOrientation: boolean;
+  setBypassOrientation: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bypassOrientation, setBypassOrientation] = useState(false);
 
   async function loadProfile(userId: string) {
     const data = await FinanceService.fetchProfile(userId);
@@ -105,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, setProfile }}>
+    <AuthContext.Provider value={{ session, profile, setProfile, bypassOrientation, setBypassOrientation }}>
       {children}
     </AuthContext.Provider>
   );
