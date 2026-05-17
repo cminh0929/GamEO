@@ -448,15 +448,8 @@ export function useXiDachRoom(
       return;
     }
 
-    // Check if the player is currently under the mandatory score limit (< 16 points and < 5 cards)
-    const score = Hand.calculateScore(player.hand);
-    const special = Hand.checkSpecialHands(player);
-    const isSpecial = special === 'xi_bang' || special === 'xi_dach' || special === 'ngu_linh';
-    const isUnderLimit = !isSpecial && score < 16 && player.hand.length < 5;
-
-    // Time limit check: manual hit is blocked if turn deadline has passed,
-    // unless they are under 16 points and legally required to draw cards to reach 16.
-    if (!isUnderLimit && gs.turnDeadline && Date.now() > gs.turnDeadline) {
+    // Time limit check: manual hit is strictly blocked if turn deadline has passed
+    if (gs.turnDeadline && Date.now() > gs.turnDeadline) {
       console.warn('[hit] Rejected: Turn deadline has passed');
       alert('Đã hết thời gian lượt chơi của bạn!');
       return;
@@ -483,33 +476,17 @@ export function useXiDachRoom(
     // Guard: ignore bots in main source, bots are only activated in tests
     if (player.id.startsWith('00000000-0000-4000-a000-')) return;
 
-    const score = Hand.calculateScore(player.hand);
-    const special = Hand.checkSpecialHands(player);
-    const isSpecial = special === 'xi_bang' || special === 'xi_dach' || special === 'ngu_linh';
-
     isProcessingAutoAction.current = true;
     try {
-      // Nếu chưa đủ tuổi và chưa đủ 5 lá, tự động Rút (Hit)
-      if (!isSpecial && score < 16 && player.hand.length < 5) {
-        logDebug(`Player ${player.name} AFK (score < 16), performing Auto-Hit`);
-        const engine = new XiDachEngine(gs);
-        const newState = engine.hit(idx);
-        if (newState.actionLogs && newState.actionLogs.length > 0) {
-          const lastIdx = newState.actionLogs.length - 1;
-          newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace(`${player.name} rút lá`, `[Tự động] ${player.name} rút lá`);
-        }
-        await updateRemoteState(newState);
-      } else {
-        // Đã đủ tuổi hoặc đạt giới hạn bài, tự động Dằn (Stand)
-        logDebug(`Player ${player.name} AFK (sufficient/max), performing Auto-Stand`);
-        const engine = new XiDachEngine(gs);
-        const newState = engine.stand(idx);
-        if (newState.actionLogs && newState.actionLogs.length > 0) {
-          const lastIdx = newState.actionLogs.length - 1;
-          newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace(`${player.name} dằn bài`, `[Tự động] ${player.name} dằn bài`);
-        }
-        await updateRemoteState(newState);
+      // Khi quá giờ (AFK), luôn tự động Dằn bài (Auto-Stand) để kết thúc lượt, kể cả khi chưa đủ 16 điểm
+      logDebug(`Player ${player.name} AFK, performing Auto-Stand`);
+      const engine = new XiDachEngine(gs);
+      const newState = engine.stand(idx, true); // Bỏ qua mốc 16 điểm khi tự động dằn
+      if (newState.actionLogs && newState.actionLogs.length > 0) {
+        const lastIdx = newState.actionLogs.length - 1;
+        newState.actionLogs[lastIdx] = newState.actionLogs[lastIdx].replace(`${player.name} dằn bài`, `[Tự động] ${player.name} dằn bài`);
       }
+      await updateRemoteState(newState);
     } finally {
       isProcessingAutoAction.current = false;
     }
@@ -567,10 +544,28 @@ export function useXiDachRoom(
       return;
     }
 
+    const score = Hand.calculateScore(gs.dealer.hand);
+    if (score >= 28) {
+      if (!isAuto) alert('Nhà Cái đã đền bài (>= 28đ), không thể rút thêm!');
+      return;
+    }
+
     const activePlayers = gs.players.filter((p) => p.id !== '');
     const allChecked = activePlayers.length > 0 && activePlayers.every((p) => p.isChecked);
     if (allChecked) {
       if (!isAuto) alert('Tất cả người chơi đã được xét, không thể rút thêm bài!');
+      return;
+    }
+
+    // Time limit check: manual dealer hit is blocked if turn deadline has passed,
+    // unless they are under 15 points (chưa đủ tuổi nhà cái) and forced to draw to 15.
+    const special = Hand.checkSpecialHands(gs.dealer);
+    const isSpecial = special === 'xi_bang' || special === 'xi_dach' || special === 'ngu_linh';
+    const isUnderLimit = !isSpecial && score < 15 && gs.dealer.hand.length < 5;
+
+    if (!isAuto && !isUnderLimit && gs.turnDeadline && Date.now() > gs.turnDeadline) {
+      console.warn('[dealerHit] Rejected: Turn deadline has passed');
+      alert('Đã hết thời gian lượt chơi của bạn!');
       return;
     }
 

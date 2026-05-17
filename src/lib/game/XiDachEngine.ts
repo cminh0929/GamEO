@@ -196,9 +196,9 @@ export class XiDachEngine {
     return this.state;
   }
 
-  stand(idx: number): GameState {
+  stand(idx: number, isAuto = false): GameState {
     const player = this.state.players[idx];
-    if (player.score < 16 && player.hand.length < 5) {
+    if (!isAuto && player.score < 16 && player.hand.length < 5) {
       throw new Error('Bạn chưa đủ 16 điểm để Dằn bài!');
     }
     
