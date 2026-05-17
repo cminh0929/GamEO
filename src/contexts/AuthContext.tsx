@@ -41,11 +41,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Auth state listener
   useEffect(() => {
-    // Bắt buộc đăng nhập lại mỗi lần F5 / load lại trang để tránh lỗi state
-    supabase.auth.signOut().then(() => {
-      setSession(null);
-      setProfile(null);
-      setLoading(false);
+    // Bắt buộc đăng nhập lại mỗi lần F5 / load lại trang để tránh lỗi state (Chỉ gọi signOut nếu có session thực tế để tránh 403)
+    supabase.auth.getSession().then(({ data: { session: activeSession } }) => {
+      if (activeSession) {
+        supabase.auth.signOut().catch(() => {}).then(() => {
+          setSession(null);
+          setProfile(null);
+          setLoading(false);
+        });
+      } else {
+        setSession(null);
+        setProfile(null);
+        setLoading(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
