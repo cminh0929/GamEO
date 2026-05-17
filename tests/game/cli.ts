@@ -83,13 +83,33 @@ async function main() {
             break;
           case 'check':
             const targetIdx = parseInt(arg);
-            const { result } = XiDachEngine.calculateResult(state!.players[targetIdx], state!.dealer);
-            newState = { ...state! };
-            newState.players[targetIdx].isChecked = true;
-            newState.players[targetIdx].gameResult = result;
+            if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= state!.players.length) {
+              console.log('⚠️ Chỉ số người chơi không hợp lệ!');
+              break;
+            }
+            const playerToCheck = state!.players[targetIdx];
+            if (!playerToCheck.id) {
+              console.log('⚠️ Vị trí này không có người chơi!');
+              break;
+            }
+            const { result } = XiDachEngine.calculateResult(playerToCheck, state!.dealer);
+            newState = JSON.parse(JSON.stringify(state!));
+            if (newState) {
+              newState.players[targetIdx].isChecked = true;
+              newState.players[targetIdx].gameResult = result;
+            }
             break;
           case 'kick':
-            newState = engine.kickPlayer(arg === 'dealer' ? 'dealer' : parseInt(arg));
+            if (arg === 'dealer') {
+              newState = engine.kickPlayer('dealer');
+            } else {
+              const kickIdx = parseInt(arg);
+              if (isNaN(kickIdx) || kickIdx < 0 || kickIdx >= state!.players.length) {
+                console.log('⚠️ Chỉ số người chơi để kích không hợp lệ!');
+                break;
+              }
+              newState = engine.kickPlayer(kickIdx);
+            }
             break;
           case 'reset':
             newState = {
@@ -101,6 +121,7 @@ async function main() {
               })),
               status: 'ended',
               turnIndex: 0,
+              turnDeadline: 0,
               lastActionAt: Date.now(),
             };
             break;
