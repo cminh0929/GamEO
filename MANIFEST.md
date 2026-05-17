@@ -16,6 +16,7 @@ Tài liệu này đóng vai trò là "Bản khai thông tin" cốt lõi của Ga
 
 ## 3. Các Lệnh Vận Hành Cốt Lõi (Core Commands)
 - Chạy môi trường Dev: `npm run dev`
+- Chạy môi trường Playground (Cổng 5011): `npm run dev:ui`
 - Build dự án: `npm run build`
 - Chạy toàn bộ test suite (Xì Dách): `npm run test:game:all`
 - Chạy test Xì Dách thủ công bằng CLI: `npm run test:game:cli`
