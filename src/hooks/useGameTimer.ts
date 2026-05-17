@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { GameState } from '../types/game';
 import type { Profile } from '../types/platform';
 
@@ -16,24 +16,55 @@ export function useGameTimer({ gameState, profile, stand, isBlocked = false }: U
   const [timeLeft, setTimeLeft] = useState(0);
   const [idleTimeLeft, setIdleTimeLeft] = useState(60);
 
+  // Use ref to avoid stale closures and keep the effect dependency stable
+  const standRef = useRef(stand);
+  useEffect(() => {
+    standRef.current = stand;
+  }, [stand]);
+
+  const profileId = profile?.id;
+  const myPlayerIndex = gameState.players.findIndex((p) => p.id === profileId);
+
+  // Track the local turn deadline, initialized when the turn changes
+  const [localTurnDeadline, setLocalTurnDeadline] = useState<number>(0);
+  const prevTurnKey = useRef<string>('');
+
+  // Update local deadline when turn changes
+  useEffect(() => {
+    if (gameState.status === 'playing' && gameState.turnIndex !== -1) {
+      const turnKey = `${gameState.status}-${gameState.turnIndex}-${gameState.roundId || ''}`;
+      if (prevTurnKey.current !== turnKey) {
+        prevTurnKey.current = turnKey;
+        // Turn just changed or game started. Set local deadline to 30 seconds from now
+        setLocalTurnDeadline(Date.now() + 30000);
+      }
+    } else {
+      prevTurnKey.current = '';
+      setLocalTurnDeadline(0);
+      setTimeLeft(0);
+    }
+  }, [gameState.status, gameState.turnIndex, gameState.roundId]);
+
   // Turn countdown timer
   useEffect(() => {
+    if (!localTurnDeadline || gameState.status !== 'playing') {
+      setTimeLeft(0);
+      return;
+    }
+
     const interval = setInterval(() => {
       const now = Date.now();
-      if (gameState.status === 'playing' && gameState.turnDeadline) {
-        const diff = Math.max(0, Math.floor((gameState.turnDeadline - now) / 1000));
-        setTimeLeft(diff);
-        const myPlayerIndex = gameState.players.findIndex((p) => p.id === profile?.id);
-        // Guard: don't auto-stand if this tab is blocked (duplicate tab scenario)
-        if (diff <= 0 && gameState.status === 'playing' && gameState.turnIndex === myPlayerIndex && !isBlocked) {
-          stand(gameState.turnIndex);
-        }
-      } else {
-        setTimeLeft(0);
+      const diff = Math.max(0, Math.floor((localTurnDeadline - now) / 1000));
+      setTimeLeft(diff);
+
+      // Guard: don't auto-stand if this tab is blocked (duplicate tab scenario)
+      if (diff <= 0 && gameState.status === 'playing' && gameState.turnIndex === myPlayerIndex && !isBlocked) {
+        standRef.current(gameState.turnIndex);
       }
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [gameState.status, gameState.turnDeadline, gameState.turnIndex, gameState.players, profile?.id, stand, isBlocked]);
+  }, [localTurnDeadline, gameState.status, gameState.turnIndex, myPlayerIndex, isBlocked]);
 
   // Idle timer (auto-reset if dealer is away)
   useEffect(() => {
