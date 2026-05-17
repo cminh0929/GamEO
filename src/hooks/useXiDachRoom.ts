@@ -448,12 +448,19 @@ export function useXiDachRoom(
       return;
     }
 
+    // Time limit check: manual hit is blocked if turn deadline has passed
+    if (gs.turnDeadline && Date.now() > gs.turnDeadline) {
+      console.warn('[hit] Rejected: Turn deadline has passed');
+      alert('Đã hết thời gian lượt chơi của bạn!');
+      return;
+    }
+
     if (player.hand.length >= 5) return alert('Đã đạt giới hạn tối đa 5 lá bài!');
 
     const engine = new XiDachEngine(gs);
     const newState = engine.hit(idx);
     updateRemoteState(newState);
-  }, [updateRemoteState]);
+  }, [profile, isAdmin, updateRemoteState]);
 
   const autoAction = useCallback(async (idx: number) => {
     const gs = gameStateRef.current;
@@ -518,6 +525,13 @@ export function useXiDachRoom(
     // Authorization check: only active player or admin or automated system (isAuto) can stand
     if (!isAuto && player.id !== profile?.id && !isAdmin) {
       console.warn('[stand] Rejected: Unauthorized manual stand');
+      return;
+    }
+
+    // Time limit check: manual stand is blocked if turn deadline has passed
+    if (!isAuto && gs.turnDeadline && Date.now() > gs.turnDeadline) {
+      console.warn('[stand] Rejected: Turn deadline has passed');
+      alert('Đã hết thời gian lượt chơi của bạn!');
       return;
     }
 

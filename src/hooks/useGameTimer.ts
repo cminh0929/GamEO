@@ -29,21 +29,25 @@ export function useGameTimer({ gameState, profile, stand, isBlocked = false }: U
   const [localTurnDeadline, setLocalTurnDeadline] = useState<number>(0);
   const prevTurnKey = useRef<string>('');
 
-  // Update local deadline when turn changes
+  // Update local deadline when turn changes or turnDeadline is updated
   useEffect(() => {
     if (gameState.status === 'playing' && gameState.turnIndex !== -1) {
-      const turnKey = `${gameState.status}-${gameState.turnIndex}-${gameState.roundId || ''}`;
-      if (prevTurnKey.current !== turnKey) {
-        prevTurnKey.current = turnKey;
-        // Turn just changed or game started. Set local deadline to 30 seconds from now
-        setLocalTurnDeadline(Date.now() + 30000);
+      if (gameState.turnDeadline) {
+        setLocalTurnDeadline(gameState.turnDeadline);
+      } else {
+        const turnKey = `${gameState.status}-${gameState.turnIndex}-${gameState.roundId || ''}`;
+        if (prevTurnKey.current !== turnKey) {
+          prevTurnKey.current = turnKey;
+          // Fallback to local 30s
+          setLocalTurnDeadline(Date.now() + 30000);
+        }
       }
     } else {
       prevTurnKey.current = '';
       setLocalTurnDeadline(0);
       setTimeLeft(0);
     }
-  }, [gameState.status, gameState.turnIndex, gameState.roundId]);
+  }, [gameState.status, gameState.turnIndex, gameState.roundId, gameState.turnDeadline]);
 
   // Turn countdown timer
   useEffect(() => {
