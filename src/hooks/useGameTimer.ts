@@ -57,8 +57,9 @@ export function useGameTimer({ gameState, profile, stand, isBlocked = false }: U
       const diff = Math.max(0, Math.floor((localTurnDeadline - now) / 1000));
       setTimeLeft(diff);
 
-      // Guard: don't auto-stand if this tab is blocked (duplicate tab scenario)
-      if (diff <= 0 && gameState.status === 'playing' && gameState.turnIndex === myPlayerIndex && !isBlocked) {
+      // Guard: don't auto-stand if this tab is blocked or if it's the very start of the turn
+      const elapsed = Date.now() - (gameState.lastActionAt || Date.now());
+      if (diff <= 0 && elapsed >= 28000 && gameState.status === 'playing' && gameState.turnIndex === myPlayerIndex && !isBlocked) {
         standRef.current(gameState.turnIndex);
       }
     }, 1000);

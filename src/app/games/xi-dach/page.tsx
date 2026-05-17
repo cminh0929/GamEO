@@ -110,8 +110,12 @@ function XiDachGame() {
     if (timeLeft > 0 && idleTimeLeft > 0) return;
     if (!profile) return;
 
+    const now = Date.now();
+    const elapsedSinceLastAction = now - (gameState.lastActionAt || now);
+
     // 1. Xử lý Nhà Cái AFK (idleTimeLeft === 0)
-    if (idleTimeLeft === 0 && gameState.dealer.id !== '') {
+    // Chỉ kích hoạt nếu thực sự đã trôi qua ít nhất 58 giây kể từ hành động cuối
+    if (idleTimeLeft === 0 && gameState.dealer.id !== '' && elapsedSinceLastAction >= 58000) {
       // Ưu tiên chọn người đang Online (có trong allPresent) làm người xử lý
       const firstOnlineSeated = gameState.players.find((p) => p.id !== '' && allPresent.some(u => u.id === p.id));
       const firstSpectator = allPresent.find(u => u.id !== gameState.dealer.id && !gameState.players.some(p => p.id === u.id));
@@ -124,7 +128,8 @@ function XiDachGame() {
     }
 
     // 2. Xử lý Người chơi AFK hết lượt (timeLeft === 0)
-    if (timeLeft === 0 && gameState.status === 'playing' && gameState.turnIndex !== -1) {
+    // Chỉ kích hoạt nếu thực sự đã trôi qua ít nhất 28 giây kể từ hành động cuối
+    if (timeLeft === 0 && gameState.status === 'playing' && gameState.turnIndex !== -1 && elapsedSinceLastAction >= 28000) {
       const currentPlayer = gameState.players[gameState.turnIndex];
       // Nếu người chơi AFK không phải là tôi, tôi có thể là "trọng tài" để thúc lượt của họ
       if (currentPlayer && currentPlayer.id !== '' && currentPlayer.id !== profile.id) {
