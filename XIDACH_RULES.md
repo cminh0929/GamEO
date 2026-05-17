@@ -24,16 +24,18 @@ Từ cao xuống thấp:
     *   Nếu người chơi dằn lại khi tổng điểm `< 16`, sẽ bị xử Thua ngay lập tức (trừ khi có tay bài đặc biệt).
 *   **Giới hạn lá bài**: Được rút tối đa **5 lá bài**.
 *   **Quắc (Bust)**: Khi tổng điểm **> 21**. Người chơi **không bị tự động qua lượt** khi Quắc, vẫn có quyền rút tiếp cho đến khi đủ 5 lá (tuy nhiên nếu Nhà Cái xét sẽ tính thua).
-*   **Đền (Penalty)**: Nếu người chơi cố tình rút bài để điểm số **>= 28 điểm**, ngay lập tức trạng thái biến thành `den`. Người chơi bị xử thua và phạt **tổng tất cả tiền cược trên bàn chơi** (đền bài cho Nhà Cái).
+*   **Đền (Penalty)**: Nếu người chơi cố tình rút bài để điểm số **>= 28 điểm**, ngay lập tức trạng thái biến thành `den`. Người chơi bị xử thua và phạt **tổng tất cả tiền cược trên bàn chơi** (đền bài cho Nhà Cái). Hết lượt chơi lập tức và bị chặn rút thêm.
 
 ### Đối với Nhà Cái (Dealer):
 *   **Quyền Xét bài**: Chỉ được quyền "XÉT" bài người chơi khi Nhà Cái có ít nhất **15 điểm** hoặc đã **đủ 5 lá** (hoặc có tay bài đặc biệt Xì Bàng/Xì Dách).
+*   **Rút bài thủ công quá giờ**: Nhà Cái bị chặn rút bài thủ công (Hit) sau khi hết giờ 30s, **ngoại trừ** trường hợp chưa đủ tuổi (`< 15đ` và chưa đủ 5 lá) thì vẫn được quyền Rút thủ công để đạt mốc tối thiểu.
+*   **Chặn rút khi Đền bài**: Nếu tổng điểm của Nhà Cái đã đạt **>= 28 điểm**, Nhà Cái bị chặn tuyệt đối không được phép rút bài dưới mọi hình thức.
 
 ## 4. Cơ chế Anti-Cheat & Xử lý AFK (Self-Healing)
 Hệ thống giám sát và tự động xử lý mọi thao tác bị kẹt để đảm bảo ván bài luôn diễn ra suôn sẻ:
 *   **Người chơi treo máy (AFK) tới lượt**:
-    *   Nếu điểm `< 16` và chưa đủ 5 lá: Hệ thống **Tự động Rút bài (Auto-Hit)**.
-    *   Nếu điểm `>= 16` hoặc đủ 5 lá: Hệ thống **Tự động Dằn (Auto-Stand)**.
+    *   Hệ thống **Tự động Dằn (Auto-Stand)** ngay lập tức vô điều kiện khi hết 30 giây lượt chơi, bất kể điểm số hiện tại là bao nhiêu (kể cả `< 16đ` chưa đủ tuổi).
+    *   Khi quá giờ 30 giây, người chơi hoàn toàn bị chặn rút bài thủ công (Hit) hoặc tự động rút (Auto-Hit). Nếu bị tự động dằn ở `< 16đ` do hết giờ, người chơi sẽ bị xử thua khi Xét bài (trừ khi có tay bài đặc biệt).
 *   **Người chơi Rage Quit (Thoát mạng ngang)**: Nếu đang trong ván (chưa được xét) mà mất kết nối, hệ thống coi như **Thua cược (Penalty)** và trừ tiền ngay lập tức bù cho Nhà Cái. Người chơi bị kick khỏi bàn.
 *   **Nhà Cái treo máy/Rage Quit**:
     *   Nếu đang ở phase đặt cược: **Refund** toàn bộ tiền cho người chơi, giải tán ván.

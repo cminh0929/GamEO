@@ -41,6 +41,9 @@ Tài liệu này đóng vai trò là "Bản khai thông tin" cốt lõi của Ga
 - [x] Cơ chế chặn treo multi-browser/multi-tab cùng user bằng **BroadcastChannel API (`useTabGuard`)**.
 - [x] Route Protection bằng `AuthGuard` bảo vệ các sảnh chơi game.
 - [x] Trường nhập lại mật khẩu (Confirm Password) khi Đăng ký thành viên.
+- [x] Quy tắc **Dưới 16 trừ Nhà Cái** (Nhà Cái chỉ cần 15đ để xét/dằn).
+- [x] Luật **>= 28 điểm đền bàn** (Đền tổng cược bàn cho Nhà Cái, tự động tước lượt và chặn rút thêm bài hoàn toàn).
+- [x] Cơ chế **Tự động Dằn bài (Auto-Stand) vô điều kiện** khi hết 30 giây lượt chơi cho người chơi thật.
 
 ### 🟡 Đang phát triển (In-Progress)
 - [ ] **Admin Dashboard**: Giao diện quản lý dòng tiền, điều chỉnh số dư và phát hiện giao dịch bất thường (Anomaly Detection), kích hoạt bằng phím tắt `ctrl + /` cho tài khoản `admin`.
@@ -51,5 +54,5 @@ Tài liệu này đóng vai trò là "Bản khai thông tin" cốt lõi của Ga
 - [ ] Xây dựng game bài thứ hai: **Tài Xỉu (Dice Game)** hoặc **Mậu Binh**.
 
 ## 6. Handoff State (Phiên làm việc hiện tại)
-- **Tập tin đang mở**: [cli.ts](file:///d:/01_Dev/_Workspaces/Active/GamEO/tests/game/cli.ts#L112)
+- **Tập tin đang mở**: [useXiDachRoom.ts](file:///d:/01_Dev/_Workspaces/Active/GamEO/src/hooks/useXiDachRoom.ts#L440)
 - **Mục tiêu phiên kế tiếp**: Triển khai thiết kế giao diện và logic cho Admin Panel (`AdminPanel.tsx` và `PlatformShell.tsx` listener).
