@@ -68,6 +68,14 @@ function XiDachGame() {
   const { spectators, allPresent } = useSpectators(ROOM_ID, mePresence, gameState);
   const { messages: chatMessages, sendMessage, bubbles } = useChat(ROOM_ID, mePresence);
   const [showLogs, setShowLogs] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<'transactions' | 'actions'>('actions');
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showLogs && activeTab === 'actions') {
+      logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [gameState.actionLogs, showLogs, activeTab]);
 
   // Show "XÉT TẤT CẢ" when all seated players have finished their turns
   const isDealer = gameState.dealer.id === profile?.id;
@@ -200,20 +208,100 @@ function XiDachGame() {
       </div>
 
       {/* Sidebar giao dịch - Toggleable on mobile */}
-      <div className={`transaction-sidebar ${showLogs ? 'is-open' : ''}`}>
-        <div className="sidebar-header">
-          <h3>📜 GIAO DỊCH</h3>
-          <button className="btn-close-sidebar" onClick={() => setShowLogs(false)}>×</button>
+      <div className={`transaction-sidebar ${showLogs ? 'is-open' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="sidebar-header" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'stretch' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>📋 LỊCH SỬ BÀN</h3>
+            <button className="btn-close-sidebar" onClick={() => setShowLogs(false)}>×</button>
+          </div>
+          <div className="tab-selectors" style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px' }}>
+            <button
+              onClick={() => setActiveTab('actions')}
+              style={{
+                flex: 1,
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: activeTab === 'actions' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                color: activeTab === 'actions' ? '#fff' : '#aaa',
+                fontWeight: activeTab === 'actions' ? '700' : '400',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              ⚡ DIỄN BIẾN
+            </button>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              style={{
+                flex: 1,
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: activeTab === 'transactions' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                color: activeTab === 'transactions' ? '#fff' : '#aaa',
+                fontWeight: activeTab === 'transactions' ? '700' : '400',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              💵 GIAO DỊCH
+            </button>
+          </div>
         </div>
-        <div className="log-list">
-          {logs.map((log) => (
-            <div key={log.id} className="log-item">
-              <span className={log.amount > 0 ? 'pos' : 'neg'}>
-                {log.amount > 0 ? '+' : ''}{(log.amount ?? 0).toLocaleString()}
-              </span>
-              <p>{log.description}</p>
-            </div>
-          ))}
+        <div className="log-list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px 0' }}>
+          {activeTab === 'transactions' ? (
+            logs.length === 0 ? (
+              <div style={{ color: '#666', textAlign: 'center', padding: '20px 0', fontSize: '0.9rem' }}>Chưa có giao dịch nào</div>
+            ) : (
+              logs.map((log) => (
+                <div key={log.id} className="log-item" style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', borderLeft: log.amount > 0 ? '3px solid #4ade80' : '3px solid #f87171' }}>
+                  <span className={log.amount > 0 ? 'pos' : 'neg'} style={{ fontWeight: 800, color: log.amount > 0 ? '#4ade80' : '#f87171', display: 'block', fontSize: '0.95rem' }}>
+                    {log.amount > 0 ? '+' : ''}{(log.amount ?? 0).toLocaleString()} xu
+                  </span>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#ccc', lineHeight: '1.3' }}>{log.description}</p>
+                </div>
+              ))
+            )
+          ) : (
+            !gameState.actionLogs || gameState.actionLogs.length === 0 ? (
+              <div style={{ color: '#666', textAlign: 'center', padding: '20px 0', fontSize: '0.9rem' }}>Chưa có diễn biến nào</div>
+            ) : (
+              gameState.actionLogs.map((actionLog, index) => {
+                // Highlight critical events (Win/Lose/Bust/Dealer/System Warning)
+                let isWarning = actionLog.includes('⚠️');
+                let isSpecial = actionLog.includes('XÌ BÀNG') || actionLog.includes('XÌ DÁCH') || actionLog.includes('Ngũ Linh');
+                let isWin = actionLog.includes('Thắng');
+                let isLose = actionLog.includes('Thua');
+
+                let itemBg = 'rgba(255,255,255,0.02)';
+                let borderLeft = '3px solid rgba(255,255,255,0.1)';
+                if (isWarning) { itemBg = 'rgba(239, 68, 68, 0.05)'; borderLeft = '3px solid #ef4444'; }
+                else if (isSpecial) { itemBg = 'rgba(212, 175, 55, 0.05)'; borderLeft = '3px solid #d4af37'; }
+                else if (isWin) { borderLeft = '3px solid #4ade80'; }
+                else if (isLose) { borderLeft = '3px solid #f87171'; }
+
+                return (
+                  <div key={index} style={{
+                    background: itemBg,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    borderLeft: borderLeft,
+                    fontSize: '0.85rem',
+                    color: isSpecial ? '#ffe082' : '#eee',
+                    lineHeight: '1.4',
+                    fontFamily: 'monospace',
+                    animation: 'fadeIn 0.2s ease-out'
+                  }}>
+                    {actionLog}
+                  </div>
+                );
+              })
+            )
+          )}
+          <div ref={logEndRef} />
         </div>
       </div>
 

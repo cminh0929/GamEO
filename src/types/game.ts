@@ -34,4 +34,5 @@ export interface GameState {
   lastActionAt: number; // Mốc thời gian hành động cuối cùng
   processedTransactions?: string[]; // Lưu vết ID các giao dịch đã thực hiện để tránh lặp
   roundId?: string; // ID duy nhất của ván bài để chống trùng giao dịch
+  actionLogs?: string[]; // Ghi nhận lịch sử diễn biến ván bài
 }

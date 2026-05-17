@@ -19,6 +19,13 @@ export class XiDachEngine {
     this.state.lastActionAt = Date.now();
   }
 
+  private addLog(message: string) {
+    if (!this.state.actionLogs) this.state.actionLogs = [];
+    const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    this.state.actionLogs.push(`[${time}] ${message}`);
+    if (this.state.actionLogs.length > 50) this.state.actionLogs.shift();
+  }
+
   getNextTurnState(): GameState {
     let nextIdx = this.state.turnIndex + 1;
     while (nextIdx < this.state.players.length && this.state.players[nextIdx].id === '') nextIdx++;
@@ -50,12 +57,14 @@ export class XiDachEngine {
         id: profile.id, name: `${profile.username} 👑`,
         balance: profile.balance, avatarUrl: profile.avatar_url ?? undefined,
       };
+      this.addLog(`${profile.username} đã làm Nhà Cái 👑`);
     } else if (index !== undefined) {
       gs.players[index] = {
         ...gs.players[index],
         id: profile.id, name: profile.username,
         balance: profile.balance, avatarUrl: profile.avatar_url ?? undefined,
       };
+      this.addLog(`${profile.username} đã ngồi vào vị trí ${index + 1} 🪑`);
     }
     return this.state;
   }
@@ -64,12 +73,16 @@ export class XiDachEngine {
     this.updateLastAction();
 
     if (index === 'dealer') {
+      const oldName = this.state.dealer.name || 'Nhà Cái';
       this.state.dealer = { id: '', name: 'Nhà Cái', hand: [], score: 0, status: 'playing', balance: 0, currentBet: 0 };
+      this.addLog(`${oldName} đã rời bàn 👋`);
     } else {
+      const oldName = this.state.players[index].name || `Vị trí ${index + 1}`;
       this.state.players[index] = {
         id: '', name: `Vị trí ${index + 1}`, hand: [], score: 0, status: 'playing',
         isChecked: false, gameResult: null, balance: 0, currentBet: 0,
       };
+      this.addLog(`${oldName} đã rời ghế hoặc bị kick 👋`);
     }
     return this.state;
   }
@@ -77,6 +90,7 @@ export class XiDachEngine {
   placeBet(index: number, amount: number): GameState {
     this.updateLastAction();
     this.state.players[index].currentBet = amount;
+    this.addLog(`${this.state.players[index].name} đã cược $${amount.toLocaleString()} 💵`);
     return this.state;
   }
 
@@ -91,6 +105,7 @@ export class XiDachEngine {
         ...p, currentBet: 0, gameResult: null, isChecked: false, hand: [], status: 'playing' as const,
       }));
       this.state.processedTransactions = [];
+      this.addLog('Vòng đặt cược mới bắt đầu! Vui lòng đặt cược 🪙');
       return this.state;
     }
 
@@ -116,8 +131,21 @@ export class XiDachEngine {
     this.state.dealer = dealerProfile;
     this.state.players = updatedPlayers;
     
-    // Nếu nhà cái có Xì Bàng/Xì Dách, kết thúc ván ngay (để dealer tự đi xét)
+    this.addLog('Nhà Cái đã chia bài! Bắt đầu ván chơi 🃏');
+    
+    // Log special hands immediately after dealing
+    updatedPlayers.forEach((p) => {
+      if (p.id === '') return;
+      const pSpecial = Hand.checkSpecialHands(p);
+      if (pSpecial === 'xi_bang' || pSpecial === 'xi_dach') {
+        const specialName = pSpecial === 'xi_bang' ? 'XÌ BÀNG 🌟' : 'XÌ DÁCH ✨';
+        this.addLog(`${p.name} đạt ${specialName} ngay khi chia bài!`);
+      }
+    });
+
     if (dealerSpecial === 'xi_bang' || dealerSpecial === 'xi_dach') {
+      const specialName = dealerSpecial === 'xi_bang' ? 'XÌ BÀNG 👑' : 'XÌ DÁCH ✨';
+      this.addLog(`Nhà Cái đạt ${specialName} ngay khi chia bài!`);
       this.state.status = 'ended';
       this.state.turnIndex = -1;
     } else {
@@ -144,6 +172,8 @@ export class XiDachEngine {
 
     this.updateLastAction();
     this.state.deck = newDeck;
+    const suitSymbol = newCard.suit === 'hearts' ? '♥️' : newCard.suit === 'diamonds' ? '♦️' : newCard.suit === 'clubs' ? '♣️' : '♠️';
+    this.addLog(`${player.name} rút lá ${newCard.rank}${suitSymbol} (${newScore}đ) 🃏`);
 
     // Logic Phân loại bài
     if (newScore >= 28) {
@@ -176,6 +206,7 @@ export class XiDachEngine {
     if (player.status !== 'bust') {
       player.status = 'stay';
     }
+    this.addLog(`${player.name} dằn bài (${player.score}đ) ✋`);
     return this.getNextTurnState();
   }
 
@@ -186,11 +217,14 @@ export class XiDachEngine {
     
     this.updateLastAction();
     this.state.deck = newDeck;
+    const newScore = Hand.calculateScore(newHand);
+    const suitSymbol = newCard.suit === 'hearts' ? '♥️' : newCard.suit === 'diamonds' ? '♦️' : newCard.suit === 'clubs' ? '♣️' : '♠️';
     this.state.dealer = {
       ...this.state.dealer,
       hand: newHand,
-      score: Hand.calculateScore(newHand)
+      score: newScore
     };
+    this.addLog(`Nhà Cái rút thêm lá ${newCard.rank}${suitSymbol} (${newScore}đ) 🃏`);
     return this.state;
   }
 

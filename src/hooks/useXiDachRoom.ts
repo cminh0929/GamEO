@@ -274,12 +274,20 @@ export function useXiDachRoom(
         processedTx.push(dealerTxId);
       }
 
+      const outcomeText = settlement.amount > 0 ? `Thắng +$${settlement.amount.toLocaleString()}` : (settlement.amount < 0 ? `Thua -$${Math.abs(settlement.amount).toLocaleString()}` : 'Hòa 🤝');
+      const logMessage = `Nhà Cái xét bài ${player.name}: ${outcomeText} (${player.score}đ vs ${gs.dealer.score}đ)`;
+      const updatedLogs = [...(gs.actionLogs || [])];
+      const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      updatedLogs.push(`[${time}] ${logMessage}`);
+      if (updatedLogs.length > 50) updatedLogs.shift();
+
       updatedPlayers[idx] = { ...player, isChecked: true, gameResult: settlement.result, balance: newPlayerBalance };
       updateRemoteState({
         ...gs,
         players: updatedPlayers,
         dealer: { ...gs.dealer, balance: gs.dealer.balance - settlement.amount },
         processedTransactions: processedTx,
+        actionLogs: updatedLogs,
         lastActionAt: Date.now(),
       });
       // Refresh transaction log cho player hiện tại sau khi bị xét
@@ -313,6 +321,10 @@ export function useXiDachRoom(
       const processedTx = gs.processedTransactions || [];
       const roundKey = gs.roundId || `fallback-${gs.lastActionAt || 0}`;
 
+      const updatedLogs = [...(gs.actionLogs || [])];
+      const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      let anySettled = false;
+
       for (let idx = 0; idx < updatedPlayers.length; idx++) {
         const player = updatedPlayers[idx];
         // Idempotency guard — skip empty seats and already-settled players
@@ -332,7 +344,17 @@ export function useXiDachRoom(
         newPlayerBalance = Math.max(0, player.balance + settlement.amount);
         totalDealerDelta -= settlement.amount;
 
+        const outcomeText = settlement.amount > 0 ? `Thắng +$${settlement.amount.toLocaleString()}` : (settlement.amount < 0 ? `Thua -$${Math.abs(settlement.amount).toLocaleString()}` : 'Hòa 🤝');
+        updatedLogs.push(`[${time}] Nhà Cái xét bài ${player.name}: ${outcomeText} (${player.score}đ vs ${gs.dealer.score}đ)`);
+        if (updatedLogs.length > 50) updatedLogs.shift();
+        anySettled = true;
+
         updatedPlayers[idx] = { ...player, isChecked: true, gameResult: settlement.result, balance: newPlayerBalance };
+      }
+
+      if (anySettled) {
+        updatedLogs.push(`[${time}] Nhà Cái đã hoàn thành XÉT CẢ BÀN 👑`);
+        if (updatedLogs.length > 50) updatedLogs.shift();
       }
 
       // Thực hiện giao dịch tổng cho Nhà cái nếu có thay đổi
@@ -349,6 +371,7 @@ export function useXiDachRoom(
         players: updatedPlayers,
         dealer: { ...gs.dealer, balance: gs.dealer.balance + totalDealerDelta },
         processedTransactions: processedTx,
+        actionLogs: updatedLogs,
         lastActionAt: Date.now(),
       });
       // Refresh transaction log cho player hiện tại sau khi bị xét
@@ -579,6 +602,13 @@ export function useXiDachRoom(
         // Kick player and advance turn
         const engine = new XiDachEngine(gs);
         let newState = engine.kickPlayer(idx);
+
+        const updatedLogs = [...(newState.actionLogs || [])];
+        const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        updatedLogs.push(`[${time}] ⚠️ ${player.name} bị phạt Rage Quit/AFK -$${bet.toLocaleString()} 💸`);
+        if (updatedLogs.length > 50) updatedLogs.shift();
+        newState.actionLogs = updatedLogs;
+
         // Sau khi kích, cần chuyển lượt vì đang là lượt của họ
         const nextState = getNextTurnState(newState);
         updateRemoteState({ ...nextState, processedTransactions: processedTx });
