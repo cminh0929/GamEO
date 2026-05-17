@@ -1997,4 +1997,52 @@ body {
   right: 12px;
 }
 
+/* ============================================================
+   RESPONSIVE GAME TABLE OVERRIDES (Mobile Landscape & Tablet Portrait)
+   ============================================================ */
+@media (max-width: 1024px), (max-height: 520px) {
+  /* Force Sidebar to be a high z-index floating overlay drawer instead of static */
+  .transaction-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 260px !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    border-right: 1.5px solid rgba(212, 175, 55, 0.2) !important;
+    z-index: 1000 !important; /* Stand above seats and avoid blocking them */
+    transform: translateX(-280px) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: transform 0.3s ease, opacity 0.3s ease !important;
+  }
+  
+  .transaction-sidebar.is-open {
+    transform: translateX(0) !important;
+    opacity: 1 !important;
+    pointer-events: all !important;
+  }
+  
+  /* Show close button in the sidebar */
+  .btn-close-sidebar {
+    display: block !important;
+  }
+  
+  /* Show the toggle log button so mobile players can open/close history */
+  .btn-toggle-logs {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    z-index: 900 !important;
+  }
+
+  /* Optimize left positions slightly to prevent overlaps on smaller widths */
+  .seat-0 { left: 4% !important; }
+  .seat-6 { left: 82% !important; }
+}
+
+
 
