@@ -7,8 +7,8 @@ import { CLIFormatter } from './utils/formatter';
 import { Profile } from '../../src/types/platform';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const ROOM_ID = 'gameo-table-1';
 
 // Real Bot IDs from Database
@@ -30,13 +30,12 @@ async function botExecuteTransaction(userId: string, amount: number, type: strin
   if (amount === 0) return;
   console.log(`💸 [TX] ${userId}: ${amount > 0 ? '+' : ''}${amount.toLocaleString()} (${description})`);
   
-  // Gọi hàm rpc update_balance_v2 (giống hệt như web app)
+  // Gọi hàm rpc update_balance (giống hệt như web app)
   const { error } = await supabase.rpc('update_balance', {
     p_user_id: userId,
     p_amount: amount,
     p_type: type,
     p_description: description
-
   });
 
   if (error) console.error(`❌ Lỗi giao dịch cho ${userId}:`, error.message);
@@ -47,7 +46,7 @@ async function delay(ms: number) {
 }
 
 async function runAutoGame() {
-  console.log('\n🚀 ĐANG KHỞI CHẠY TEST TỰ ĐỘNG VỚI 7 BOTS...');
+  console.log('\n🚀 ĐANG KHỞI CHẠY TEST TỰ ĐỘNG VỚI 7 BOTS (SERVICE ROLE)...');
   
   console.log('🧹 Đang làm sạch bàn...');
   let state: GameState = {
@@ -137,7 +136,7 @@ async function runAutoGame() {
       const totalTableBets = state.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
       const settlement = XiDachEngine.calculatePlayerSettlement(player, state.dealer, totalTableBets);
       
-      // Thực hiện giao dịch thật cho Player
+      // Thực hiện giao dịch thật cho Player (Dùng Service Role)
       await botExecuteTransaction(player.id, settlement.amount, settlement.type, settlement.description);
       totalDealerDelta -= settlement.amount;
 

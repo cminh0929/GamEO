@@ -16,12 +16,12 @@ Từ cao xuống thấp:
 3.  **Ngũ Linh (Rút đủ 5 lá mà tổng điểm <= 21)**: **Thắng x2** tiền cược.
 4.  **Điểm số thông thường**: Tổng điểm từ 16 đến 21. **Thắng x1** tiền cược.
     *   *Lưu ý: Nếu người chơi và Nhà Cái có cùng tay bài đặc biệt giống nhau (VD: cùng Xì Bàng hoặc cùng Ngũ Linh) hoặc cùng điểm số, kết quả là **Hòa (Draw)** (trả lại tiền cược).*
-    *   *Ngay khi chia bài, nếu người chơi có Xì Bàng/Xì Dách, trạng thái tự động chuyển thành `stay` (dừng). Nếu Nhà Cái có Xì Bàng/Xì Dách, ván bài LẬP TỨC kết thúc (`ended`) để xét toàn bàn.*
+    *   *Ngay khi chia bài, nếu người chơi có Xì Bàng/Xì Dách, trạng thái tự động chuyển thành `stay` (dằn). Nếu Nhà Cái có Xì Bàng/Xì Dách, ván bài LẬP TỨC kết thúc (`ended`) để xét toàn bàn.*
 
-## 3. Quy tắc Rút bài (Hit) và Dừng (Stand)
+## 3. Quy tắc Rút bài (Hit) và Dằn (Stand)
 ### Đối với Người chơi (Player):
-*   **Chưa đủ tuổi**: Phải đạt tối thiểu **16 điểm** mới được quyền Dừng (Stand) thủ công. (Ngoại lệ: Đã rút đủ 5 lá hoặc có tay bài đặc biệt).
-    *   Nếu người chơi dừng lại khi tổng điểm `< 16`, sẽ bị xử Thua ngay lập tức (trừ khi có tay bài đặc biệt).
+*   **Chưa đủ tuổi**: Phải đạt tối thiểu **16 điểm** mới được quyền Dằn (Stand) thủ công. (Ngoại lệ: Đã rút đủ 5 lá hoặc có tay bài đặc biệt).
+    *   Nếu người chơi dằn lại khi tổng điểm `< 16`, sẽ bị xử Thua ngay lập tức (trừ khi có tay bài đặc biệt).
 *   **Giới hạn lá bài**: Được rút tối đa **5 lá bài**.
 *   **Quắc (Bust)**: Khi tổng điểm **> 21**. Người chơi **không bị tự động qua lượt** khi Quắc, vẫn có quyền rút tiếp cho đến khi đủ 5 lá (tuy nhiên nếu Nhà Cái xét sẽ tính thua).
 *   **Đền (Penalty)**: Nếu người chơi cố tình rút bài để điểm số **>= 28 điểm**, ngay lập tức trạng thái biến thành `den`. Người chơi bị xử thua và phạt **tổng tất cả tiền cược trên bàn chơi** (đền bài cho Nhà Cái).

@@ -10,7 +10,11 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:game:cli": "npx tsx tests/game/cli.ts",
-    "test:game:auto": "npx tsx tests/game/auto.ts"
+    "test:game:auto": "npx tsx tests/game/auto.ts",
+    "test:game:special": "npx tsx tests/game/special_hands.ts",
+    "test:game:stress": "npx tsx tests/game/stress_test.ts",
+    "test:game:afk": "npx tsx tests/game/afk_test.ts",
+    "test:game:all": "npx tsx tests/game/run_all_tests.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

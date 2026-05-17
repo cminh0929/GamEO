@@ -1,0 +1,234 @@
+[2026-05-15T17:49:42.649Z] 
+🚀 GAMEO FULL TEST SUITE — 00:49:42 16/5/2026
+[2026-05-15T17:49:42.650Z] 📄 Log file: D:\01_Dev\_Workspaces\Active\GamEO\tests\game\logs\run_2026-05-15T17-49-42.log
+
+[2026-05-15T17:49:42.650Z] 
+═══════════════════════════════════════
+[2026-05-15T17:49:42.651Z] PHASE 1: ENGINE UNIT TESTS (5 cases)
+[2026-05-15T17:49:42.651Z] ═══════════════════════════════════════
+[2026-05-15T17:49:42.652Z] ✅ [E1-XiBang-x4] — amount=40000
+[2026-05-15T17:49:42.652Z] ✅ [E2-XiDach-x3] — amount=30000
+[2026-05-15T17:49:42.653Z] ✅ [E3-NguLinh-x2] — amount=20000
+[2026-05-15T17:49:42.653Z] ✅ [E4-DealerXiBang-priority] — amount=-40000
+[2026-05-15T17:49:42.654Z] ✅ [E5-Den-penalty] — amount=-20000
+[2026-05-15T17:49:42.654Z] 
+═══════════════════════════════════════
+[2026-05-15T17:49:42.654Z] PHASE 2: STRESS TESTS (TC1-TC14)
+[2026-05-15T17:49:42.655Z] ═══════════════════════════════════════
+[2026-05-15T17:49:42.992Z] 
+── TC1-XiBang-vs-XiDach-dealer ──
+[2026-05-15T17:49:44.468Z] 
+📊 BALANCE REPORT — TC1-XiBang-vs-XiDach-dealer
+──────────────────────────────────────────────────────────────────────────────────────────
+Name                        Before         After         Delta      Expected  Status
+──────────────────────────────────────────────────────────────────────────────────────────
+Bot Player 4               980,000       980,000            +0           N/A  —
+Bot Player 5               970,000       970,000            +0           N/A  —
+Bot Player 6               910,000       910,000            +0           N/A  —
+Bot Player 7               980,000       980,000            +0           N/A  —
+Bot Player 1             1,050,000     1,090,000       +40,000       +40,000  ✅ PASS
+Bot Player 2               460,000       430,000       -30,000           N/A  —
+Bot Player 3               670,000       640,000       -30,000           N/A  —
+Bot Dealer              10,230,000    10,250,000       +20,000           N/A  —
+──────────────────────────────────────────────────────────────────────────────────────────
+Overall: 1 passed, 0 failed, 7 unasserted
+Zero-Sum integrity: ✅ (net delta = 0)
+
+[2026-05-15T17:49:44.602Z] 
+🧾 TRANSACTION LOG — TC1-XiBang-vs-XiDach-dealer (0 entries)
+────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────
+[2026-05-15T17:49:44.603Z] ✅ [TC1-XiBang-vs-XiDach-dealer] — p0Δ=40000 zeroSum=true
+[2026-05-15T17:49:45.607Z] 
+── TC2-XiDach-vs-21 ──
+[2026-05-15T17:49:47.035Z] 
+📊 BALANCE REPORT — TC2-XiDach-vs-21
+──────────────────────────────────────────────────────────────────────────────────────────
+Name                        Before         After         Delta      Expected  Status
+──────────────────────────────────────────────────────────────────────────────────────────
+Bot Player 1             1,090,000     1,120,000       +30,000       +30,000  ✅ PASS
+Bot Player 2               430,000       420,000       -10,000           N/A  —
+Bot Player 3               640,000       630,000       -10,000           N/A  —
+Bot Dealer              10,250,000    10,240,000       -10,000           N/A  —
+Bot Player 4               980,000       980,000            +0           N/A  —
+Bot Player 5               970,000       970,000            +0           N/A  —
+Bot Player 6               910,000       910,000            +0           N/A  —
+Bot Player 7               980,000       980,000            +0           N/A  —
+──────────────────────────────────────────────────────────────────────────────────────────
+Overall: 1 passed, 0 failed, 7 unasserted
+Zero-Sum integrity: ✅ (net delta = 0)
+
+[2026-05-15T17:49:47.164Z] 
+🧾 TRANSACTION LOG — TC2-XiDach-vs-21 (0 entries)
+────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────
+[2026-05-15T17:49:47.165Z] ✅ [TC2-XiDach-vs-21] — p0Δ=30000 zeroSum=true
+[2026-05-15T17:49:48.168Z] 
+── TC3-NguLinh-vs-21 ──
+[2026-05-15T17:49:49.366Z] 
+📊 BALANCE REPORT — TC3-NguLinh-vs-21
+──────────────────────────────────────────────────────────────────────────────────────────
+Name                        Before         After         Delta      Expected  Status
+──────────────────────────────────────────────────────────────────────────────────────────
+Bot Player 1             1,120,000     1,140,000       +20,000       +20,000  ✅ PASS
+Bot Player 2               420,000       410,000       -10,000           N/A  —
+Bot Player 3               630,000       620,000       -10,000           N/A  —
+Bot Dealer              10,240,000    10,240,000            +0           N/A  —
+Bot Player 4               980,000       980,000            +0           N/A  —
+Bot Player 5               970,000       970,000            +0           N/A  —
+Bot Player 6               910,000       910,000            +0           N/A  —
+Bot Player 7               980,000       980,000            +0           N/A  —
+──────────────────────────────────────────────────────────────────────────────────────────
+Overall: 1 passed, 0 failed, 7 unasserted
+Zero-Sum integrity: ✅ (net delta = 0)
+
+[2026-05-15T17:49:49.493Z] 
+🧾 TRANSACTION LOG — TC3-NguLinh-vs-21 (0 entries)
+────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────
+[2026-05-15T17:49:49.493Z] ✅ [TC3-NguLinh-vs-21] — p0Δ=20000 zeroSum=true
+[2026-05-15T17:49:50.506Z] 
+── TC4-DoublePenalty ──
+[2026-05-15T17:49:51.876Z] 
+📊 BALANCE REPORT — TC4-DoublePenalty
+──────────────────────────────────────────────────────────────────────────────────────────
+Name                        Before         After         Delta      Expected  Status
+──────────────────────────────────────────────────────────────────────────────────────────
+Bot Dealer              10,240,000    10,290,000       +50,000           N/A  —
+Bot Player 1             1,140,000     1,110,000       -30,000       -30,000  ✅ PASS
+Bot Player 2               410,000       400,000       -10,000           N/A  —
+Bot Player 3               620,000       610,000       -10,000           N/A  —
+Bot Player 4               980,000       980,000            +0           N/A  —
+Bot Player 5               970,000       970,000            +0           N/A  —
+Bot Player 6               910,000       910,000            +0           N/A  —
+Bot Player 7               980,000       980,000            +0           N/A  —
+──────────────────────────────────────────────────────────────────────────────────────────
+Overall: 1 passed, 0 failed, 7 unasserted
+Zero-Sum integrity: ✅ (net delta = 0)
+
+[2026-05-15T17:49:52.005Z] 
+🧾 TRANSACTION LOG — TC4-DoublePenalty (0 entries)
+────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────
+[2026-05-15T17:49:52.006Z] ✅ [TC4-DoublePenalty] — p0Δ=-30000 zeroSum=true
+[2026-05-15T17:49:53.009Z] 
+── TC5-DrawScore ──
+[2026-05-15T17:49:54.202Z] 
+📊 BALANCE REPORT — TC5-DrawScore
+──────────────────────────────────────────────────────────────────────────────────────────
+Name                        Before         After         Delta      Expected  Status
+──────────────────────────────────────────────────────────────────────────────────────────
+Bot Player 1             1,110,000     1,110,000            +0            +0  ✅ PASS
+Bot Player 2               400,000       390,000       -10,000           N/A  —
+Bot Player 3               610,000       600,000       -10,000           N/A  —
+Bot Dealer              10,290,000    10,310,000       +20,000           N/A  —
+Bot Player 4               980,000       980,000            +0           N/A  —
+Bot Player 5               970,000       970,000            +0           N/A  —
+Bot Player 6               910,000       910,000            +0           N/A  —
+Bot Player 7               980,000       980,000            +0           N/A  —
+──────────────────────────────────────────────────────────────────────────────────────────
+Overall: 1 passed, 0 failed, 7 unasserted
+Zero-Sum integrity: ✅ (net delta = 0)
+
+[2026-05-15T17:49:54.332Z] 
+🧾 TRANSACTION LOG — TC5-DrawScore (0 entries)
+────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────
+[2026-05-15T17:49:54.333Z] ✅ [TC5-DrawScore] — p0Δ=0 zeroSum=true
+[2026-05-15T17:49:55.338Z] 
+── TC6-AFK-Under16 (state-only) ──
+[2026-05-15T17:49:55.339Z] ✅ [TC6-AFK-Under16] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:55.548Z] 
+── TC7-AFK-Over16 (state-only) ──
+[2026-05-15T17:49:55.549Z] ✅ [TC7-AFK-Over16] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:55.768Z] 
+── TC8-AFK-Bust (state-only) ──
+[2026-05-15T17:49:55.768Z] ✅ [TC8-AFK-Bust] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:55.971Z] 
+── TC9-AFK-MaxCards (state-only) ──
+[2026-05-15T17:49:55.972Z] ✅ [TC9-AFK-MaxCards] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:56.180Z] 
+── TC10-RageQuit (state-only) ──
+[2026-05-15T17:49:56.181Z] ✅ [TC10-RageQuit] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:56.387Z] 
+── TC11-DealerCheckBlocked (state-only) ──
+[2026-05-15T17:49:56.388Z] ✅ [TC11-DealerCheckBlocked] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:56.595Z] 
+── TC12-DealerAFK-Betting (state-only) ──
+[2026-05-15T17:49:56.595Z] ✅ [TC12-DealerAFK-Betting] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:56.803Z] 
+── TC13-DealerAFK-Playing (state-only) ──
+[2026-05-15T17:49:56.804Z] ✅ [TC13-DealerAFK-Playing] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:57.004Z] 
+── TC14-SelfHealing (state-only) ──
+[2026-05-15T17:49:57.005Z] ✅ [TC14-SelfHealing] — Game-state scenario — logic verified in stress_test.ts
+[2026-05-15T17:49:57.213Z] 
+═══════════════════════════════════════
+[2026-05-15T17:49:57.213Z] PHASE 3: FULL AUTO GAME (7 bots)
+[2026-05-15T17:49:57.214Z] ═══════════════════════════════════════
+[2026-05-15T17:50:05.984Z]   Bot Player 1: LOSE (-10000)
+[2026-05-15T17:50:06.313Z]   Bot Player 2: LOSE (-10000)
+[2026-05-15T17:50:06.445Z]   Bot Player 3: WIN (+10000)
+[2026-05-15T17:50:06.584Z]   Bot Player 4: WIN (+10000)
+[2026-05-15T17:50:06.723Z]   Bot Player 5: WIN (+10000)
+[2026-05-15T17:50:06.866Z]   Bot Player 6: WIN (+10000)
+[2026-05-15T17:50:07.002Z]   Bot Player 7: LOSE (-10000)
+[2026-05-15T17:50:08.070Z] 
+📊 BALANCE REPORT — Full Auto Game
+──────────────────────────────────────────────────────────────────────────────────────────
+Name                        Before         After         Delta      Expected  Status
+──────────────────────────────────────────────────────────────────────────────────────────
+Bot Player 1             1,110,000     1,090,000       -20,000           N/A  —
+Bot Player 2               390,000       370,000       -20,000           N/A  —
+Bot Player 3               600,000       600,000            +0           N/A  —
+Bot Dealer              10,310,000    10,300,000       -10,000           N/A  —
+Bot Player 4               980,000       980,000            +0           N/A  —
+Bot Player 5               970,000       970,000            +0           N/A  —
+Bot Player 6               910,000       910,000            +0           N/A  —
+Bot Player 7               980,000       960,000       -20,000           N/A  —
+──────────────────────────────────────────────────────────────────────────────────────────
+Overall: 0 passed, 0 failed, 8 unasserted
+Zero-Sum integrity: ❌ (net delta = -70000)
+
+[2026-05-15T17:50:08.202Z] 
+🧾 TRANSACTION LOG — Full Auto Game (15 entries)
+────────────────────────────────────────────────────────────────────────────────
+  [BET     ] 000000000001     -10,000  Full game bet
+  [BET     ] 000000000002     -10,000  Full game bet
+  [BET     ] 000000000003     -10,000  Full game bet
+  [BET     ] 000000000004     -10,000  Full game bet
+  [BET     ] 000000000005     -10,000  Full game bet
+  [BET     ] 000000000006     -10,000  Full game bet
+  [BET     ] 000000000007     -10,000  Full game bet
+  [LOSE    ] 000000000001     -10,000  Full game: Thua ván bài (25đ) x1
+  [LOSE    ] 000000000002     -10,000  Full game: Thua ván bài (24đ) x1
+  [WIN     ] 000000000003  +    10,000  Full game: Thắng ván bài (20đ) x1
+  [WIN     ] 000000000004  +    10,000  Full game: Thắng ván bài (18đ) x1
+  [WIN     ] 000000000005  +    10,000  Full game: Thắng ván bài (17đ) x1
+  [WIN     ] 000000000006  +    10,000  Full game: Thắng ván bài (17đ) x1
+  [LOSE    ] 000000000007     -10,000  Full game: Thua ván bài (25đ) x1
+  [LOSE    ] 000000000000     -10,000  Full game: dealer total
+────────────────────────────────────────────────────────────────────────────────
+[2026-05-15T17:50:08.203Z] ❌ [PHASE3-FullGame-ZeroSum] — net=-70000
+[2026-05-15T17:50:08.203Z] ✅ [PHASE3-FullGame-NoDuplicateTX]
+[2026-05-15T17:50:08.203Z] 
+═══════════════════════════════════════
+[2026-05-15T17:50:08.204Z] PHASE 4: AFK TEST (fast-deadline)
+[2026-05-15T17:50:08.204Z] ═══════════════════════════════════════
+[2026-05-15T17:50:08.465Z] ❌ [PHASE4-AFK] — Không tìm thấy player nào đang chờ lượt
+
+╔══════════════════════════════════════════╗
+║         GAMEO TEST SUITE SUMMARY         ║
+╠══════════════════════════════════════════╣
+║  Total : 22                              ║
+║  ✅ Pass: 20                              ║
+║  ❌ Fail: 2                               ║
+╠══════════════════════════════════════════╣
+║  Failed tests:                           ║
+║  • PHASE3-FullGame-ZeroSum                 ║
+║  • PHASE4-AFK                              ║
+╠══════════════════════════════════════════╣
+║  ⚠️  SOME TESTS FAILED                     ║
+║  Log: run_2026-05-15T17-49-42.log        ║
+╚══════════════════════════════════════════╝
+

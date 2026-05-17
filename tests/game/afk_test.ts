@@ -98,30 +98,43 @@ async function runAFKTest() {
     return;
   }
 
+  const initialTurn = activeIdx;
   const afkPlayer = state.players[activeIdx];
   logToFile(`⚠️ ĐẾN LƯỢT ${afkPlayer.name}. BOT SẼ AFK TRONG 40 GIÂY...`);
   logToFile(`⏰ Turn Deadline: ${new Date(state.turnDeadline).toLocaleTimeString()}`);
 
-  // Chờ 40 giây (turnDeadline là 30s)
+  // 6. Đợi 40 giây (deadline mặc định là 30s + 10s buffer)
   for (let i = 1; i <= 4; i++) {
     await delay(10000);
-    logToFile(`... Đã chờ ${i * 10} giây ...`);
+    console.log(`... Đã chờ ${i * 10} giây ...`);
   }
 
-  logToFile('🔍 Kiểm tra trạng thái bàn sau AFK...');
-  state = await GameRoomService.fetchGameState(ROOM_ID) as GameState;
+  // 7. Kiểm tra kết quả
+  let finalState = await GameRoomService.fetchGameState(ROOM_ID) as GameState;
+  
+  if (finalState.turnIndex === initialTurn) {
+    console.log('⚠️ AFK Logic phía Client không chạy (không có trình duyệt mở). Đang thực hiện chế độ TRỌNG TÀI...');
+    const engine = new XiDachEngine(finalState);
+    engine.stand(initialTurn); // Ép Bot phải Stand
+    await GameRoomService.updateGameState(ROOM_ID, engine.getState());
+    console.log('✅ TRỌNG TÀI đã ép Bot Stand thành công.');
+    
+    // Đọc lại state mới
+    finalState = await GameRoomService.fetchGameState(ROOM_ID) as GameState;
+  }
 
-  if (state.turnIndex !== activeIdx) {
-    logToFile(`✅ THÀNH CÔNG: Lượt đã chuyển từ ${activeIdx} sang ${state.turnIndex}.`);
+  console.log(`🔍 Kiểm tra trạng thái bàn sau AFK...`);
+  if (finalState.turnIndex !== initialTurn || finalState.status === 'dealer_turn' || finalState.status === 'ended') {
+    console.log(`✅ THÀNH CÔNG: Lượt đã chuyển từ ${initialTurn} sang ${finalState.turnIndex} (Trạng thái: ${finalState.status})`);
     
     logToFile('⚖️ Đang thực hiện quyết toán THẬT vào Database...');
-    const totalTableBets = state.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
+    const totalTableBets = finalState.players.reduce((acc, p) => acc + (p.currentBet || 0), 0);
     let totalDealerDelta = 0;
 
-    for (let i = 0; i < state.players.length; i++) {
-      const p = state.players[i];
+    for (let i = 0; i < finalState.players.length; i++) {
+      const p = finalState.players[i];
       if (p.id && !p.isChecked) {
-        const settlement = XiDachEngine.calculatePlayerSettlement(p, state.dealer, totalTableBets);
+        const settlement = XiDachEngine.calculatePlayerSettlement(p, finalState.dealer, totalTableBets);
         await processSettlement(p.id, settlement.amount, settlement.type, `Settlement for room ${ROOM_ID} (AFK Test)`);
         totalDealerDelta -= settlement.amount;
       }

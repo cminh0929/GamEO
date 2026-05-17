@@ -11,6 +11,11 @@ import type { Profile } from '../types/platform';
 import type { PresenceUser } from './useSpectators';
 
 const ROOM_ID = 'gameo-table-1';
+const DEBUG = process.env.NODE_ENV === 'development';
+
+const logDebug = (msg: string, ...args: any[]) => {
+  if (DEBUG) console.log(`[XiDachRoom] ${msg}`, ...args);
+};
 
 const createEmptyState = (): GameState => ({
   deck: [],
@@ -38,27 +43,62 @@ export function useXiDachRoom(
   // Ref always holds the latest gameState — fixes stale closure race condition
   // where concurrent players overwrite each other's state
   const gameStateRef = useRef<GameState>(gameState);
+  const isProcessingAutoAction = useRef(false);
   // Prevent rapid double-clicks on XÉT from stacking transactions
   const isCheckingRef = useRef(false);
 
   // Fetch initial state + subscribe to realtime updates
   useEffect(() => {
     GameRoomService.fetchGameState(ROOM_ID).then((state) => {
-      if (state) { 
-        setGameState(state); 
-        gameStateRef.current = state; 
+      if (state) {
+        setGameState(state);
+        gameStateRef.current = state;
 
-        // TỰ CHỮA LÀNH: Nếu bàn bị kẹt (status != ended và lastActionAt quá 2 phút)
-        const STUCK_TIMEOUT = 2 * 60 * 1000; // 2 phút
+        // TỰ CHỮA LÀNH & XỬ PHẠT: Nếu bàn bị kẹt (status != ended và lastActionAt quá 1 phút)
+        const STUCK_TIMEOUT = 1 * 60 * 1000; // 1 phút
         const now = Date.now();
         if (state.status !== 'ended' && state.lastActionAt && (now - state.lastActionAt > STUCK_TIMEOUT)) {
-          console.warn('[Self-Healing] Phát hiện bàn bị kẹt. Đang tự động Reset...');
-          // Thực hiện reset bàn về trạng thái trống
-          const emptyState = createEmptyState();
-          GameRoomService.updateGameState(ROOM_ID, emptyState).then(() => {
+          console.warn('[Self-Healing] Phát hiện bàn bị kẹt. Đang xử phạt và Reset...');
+
+          const processStuckPenalty = async () => {
+            const emptyState = createEmptyState();
+
+            // Nếu đang trong ván, phạt người đang cầm lượt
+            if (state.status === 'playing' && state.turnIndex !== -1) {
+              const afkPlayer = state.players[state.turnIndex];
+              if (afkPlayer.id && afkPlayer.currentBet > 0) {
+                // Idempotency guard — prevents multi-client penalty storm on page load
+                const processedTx = state.processedTransactions || [];
+                const roundKey = state.roundId || `stuck-${state.lastActionAt || 0}`;
+                const penaltyTxId = `stuck-penalty-${afkPlayer.id}-${roundKey}`;
+
+                if (!processedTx.includes(penaltyTxId)) {
+                  try {
+                    const bet = afkPlayer.currentBet;
+                    console.warn(`[Self-Healing] Phạt AFK Player: ${afkPlayer.name} (-${bet})`);
+                    await executeTransaction(afkPlayer.id, -bet, 'penalty', 'Phạt làm kẹt bàn (AFK Stuck)');
+                    if (state.dealer.id) {
+                      await executeTransaction(state.dealer.id, bet, 'win', `Nhà Cái hưởng tiền phạt từ ${afkPlayer.name} (AFK Stuck)`);
+                    }
+                  } catch (err) {
+                    console.error('[Self-Healing] Lỗi khi xử phạt:', err);
+                  }
+                } else {
+                  console.warn('[Self-Healing] Penalty already processed for this round — skipping.');
+                }
+              }
+            } else if (state.status === 'betting') {
+              // Nếu đang cược mà kẹt, có thể do Nhà cái không Start — Reset/Refund đơn giản.
+            }
+
+            // Cuối cùng mới Reset bàn
+            await GameRoomService.updateGameState(ROOM_ID, emptyState);
             setGameState(emptyState);
             gameStateRef.current = emptyState;
-          });
+            logDebug('Đã xử lý xong và Reset bàn.');
+          };
+
+          processStuckPenalty();
         }
       }
     });
@@ -140,7 +180,7 @@ export function useXiDachRoom(
         alert('Ván bài đang diễn ra, bạn không thể rời bàn lúc này!');
         return;
       }
-      
+
       if (gs.status === 'betting') {
         // Refund all before ending
         await refundAllPlayers(gs);
@@ -200,7 +240,7 @@ export function useXiDachRoom(
       const bet = player.currentBet;
       let dealerBalanceDelta = 0;
       let newPlayerBalance = player.balance;
-      
+
       // Khởi tạo/Lấy danh sách tx đã xử lý
       const processedTx = gs.processedTransactions || [];
       const roundKey = gs.roundId || `fallback-${gs.lastActionAt || 0}`; // Dùng roundId làm key cố định
@@ -216,7 +256,8 @@ export function useXiDachRoom(
       const settlement = XiDachEngine.calculatePlayerSettlement(player, gs.dealer, totalTableBets);
 
       // Idempotency check cho Player
-      const playerTxId = `${settlement.type}-${player.id}-${roundKey}`;
+      // Key excludes settlement.type to avoid collisions if type changes between rounds with same roundId
+      const playerTxId = `settle-${player.id}-${roundKey}`;
 
       if (!processedTx.includes(playerTxId)) {
         await executeTransaction(player.id, settlement.amount, settlement.type, settlement.description);
@@ -267,7 +308,7 @@ export function useXiDachRoom(
       const updatedPlayers = [...gs.players];
       // Track cumulative dealer balance change across all players
       let totalDealerDelta = 0;
-      
+
       // Khởi tạo/Lấy danh sách tx đã xử lý
       const processedTx = gs.processedTransactions || [];
       const roundKey = gs.roundId || `fallback-${gs.lastActionAt || 0}`;
@@ -282,16 +323,15 @@ export function useXiDachRoom(
 
         let newPlayerBalance = player.balance;
 
-        if (true) { // Luôn cho phép ghi log (kể cả amount = 0)
-          const txId = `${settlement.type}-${player.id}-${roundKey}`;
-          if (!processedTx.includes(txId)) {
-            await executeTransaction(player.id, settlement.amount, settlement.type, settlement.description);
-            processedTx.push(txId);
-          }
-          newPlayerBalance = Math.max(0, player.balance + settlement.amount);
-          totalDealerDelta -= settlement.amount;
+        // Idempotency check — key excludes settlement.type to avoid type-change collisions
+        const txId = `settle-${player.id}-${roundKey}`;
+        if (!processedTx.includes(txId)) {
+          await executeTransaction(player.id, settlement.amount, settlement.type, settlement.description);
+          processedTx.push(txId);
         }
-        
+        newPlayerBalance = Math.max(0, player.balance + settlement.amount);
+        totalDealerDelta -= settlement.amount;
+
         updatedPlayers[idx] = { ...player, isChecked: true, gameResult: settlement.result, balance: newPlayerBalance };
       }
 
@@ -324,7 +364,7 @@ export function useXiDachRoom(
   const placeBet = useCallback(async (index: number, amount: number) => {
     if (!profile || amount <= 0) return;
     if (amount > profile.balance) return alert('Không đủ tiền!');
-    
+
     const engine = new XiDachEngine(gameStateRef.current);
     const newState = engine.placeBet(index, amount);
     updateRemoteState(newState);
@@ -366,25 +406,36 @@ export function useXiDachRoom(
 
   const autoAction = useCallback(async (idx: number) => {
     const gs = gameStateRef.current;
-    if (gs.turnIndex !== idx) return;
-    
+    // Guard: Turn index must match and must not be Dealer (Dealer AFK is handled separately)
+    if (idx === -1 || gs.turnIndex !== idx) return;
+
+    // Guard: Prevent concurrent executions of autoAction
+    if (isProcessingAutoAction.current) return;
+
     const player = gs.players[idx];
+    if (!player || player.id === '') return; // Guard for empty seats
+
     const score = Hand.calculateScore(player.hand);
     const special = Hand.checkSpecialHands(player);
     const isSpecial = special === 'xi_bang' || special === 'xi_dach' || special === 'ngu_linh';
 
-    // Nếu chưa đủ tuổi và chưa đủ 5 lá, tự động Rút (Hit)
-    if (!isSpecial && score < 16 && player.hand.length < 5) {
-      console.log(`[autoAction] Player ${player.name} AFK (score < 16), performing Auto-Hit`);
-      const engine = new XiDachEngine(gs);
-      const newState = engine.hit(idx);
-      updateRemoteState(newState);
-    } else {
-      // Đã đủ tuổi hoặc đạt giới hạn bài, tự động Dừng (Stand)
-      console.log(`[autoAction] Player ${player.name} AFK (sufficient/max), performing Auto-Stand`);
-      const engine = new XiDachEngine(gs);
-      const newState = engine.stand(idx);
-      updateRemoteState(newState);
+    isProcessingAutoAction.current = true;
+    try {
+      // Nếu chưa đủ tuổi và chưa đủ 5 lá, tự động Rút (Hit)
+      if (!isSpecial && score < 16 && player.hand.length < 5) {
+        logDebug(`Player ${player.name} AFK (score < 16), performing Auto-Hit`);
+        const engine = new XiDachEngine(gs);
+        const newState = engine.hit(idx);
+        await updateRemoteState(newState);
+      } else {
+        // Đã đủ tuổi hoặc đạt giới hạn bài, tự động Dằn (Stand)
+        logDebug(`Player ${player.name} AFK (sufficient/max), performing Auto-Stand`);
+        const engine = new XiDachEngine(gs);
+        const newState = engine.stand(idx);
+        await updateRemoteState(newState);
+      }
+    } finally {
+      isProcessingAutoAction.current = false;
     }
   }, [updateRemoteState]);
 
@@ -393,18 +444,18 @@ export function useXiDachRoom(
     const isAuto = typeof idxOrAuto === 'number' || idxOrAuto === true;
     const targetIdx = typeof idxOrAuto === 'number' ? idxOrAuto : gs.players.findIndex(p => p.id === profile?.id);
 
-    console.log('[stand] Triggered:', { targetIdx, turnIndex: gs.turnIndex, isAuto, profileId: profile?.id });
+    logDebug('Stand Triggered:', { targetIdx, turnIndex: gs.turnIndex, isAuto, profileId: profile?.id });
 
     if (targetIdx === -1 || gs.turnIndex !== targetIdx) {
       console.warn('[stand] Rejected: Not your turn or invalid index');
       return;
     }
-    
+
     const player = gs.players[targetIdx];
     const score = Hand.calculateScore(player.hand);
     const special = Hand.checkSpecialHands(player);
     const isSpecial = special === 'xi_bang' || special === 'xi_dach' || special === 'ngu_linh';
-    
+
     // Manual stand requires 16 points or special hand
     if (!isAuto && !isSpecial && score < 16) {
       console.warn('[stand] Rejected: Under 16 points (Manual)');
@@ -412,7 +463,7 @@ export function useXiDachRoom(
       return;
     }
 
-    console.log('[stand] Executing stand for player', targetIdx, 'score:', score);
+    logDebug('Executing stand for player', targetIdx, 'score:', score);
     const engine = new XiDachEngine(gs);
     const newState = engine.stand(targetIdx);
     updateRemoteState(newState);
@@ -422,7 +473,7 @@ export function useXiDachRoom(
     const gs = gameStateRef.current;
     if (gs.dealer.id !== profile?.id) return;
     if (gs.dealer.hand.length >= 5) return alert('Nhà Cái đã đạt giới hạn 5 lá bài!');
-    
+
     const activePlayers = gs.players.filter((p) => p.id !== '');
     const allChecked = activePlayers.length > 0 && activePlayers.every((p) => p.isChecked);
     if (allChecked) return alert('Tất cả người chơi đã được xét, không thể rút thêm bài!');
@@ -448,7 +499,7 @@ export function useXiDachRoom(
         if (processedTx.includes(txId)) continue; // Đã refund rồi thì bỏ qua
 
         try {
-          console.log(`[refundAllPlayers] Refunding ${player.currentBet} to ${player.name} (txId: ${txId})`);
+          logDebug(`Refunding ${player.currentBet} to ${player.name} (txId: ${txId})`);
           await executeTransaction(player.id, player.currentBet, 'refund', 'Nhà Cái vắng mặt — Hoàn trả tiền cược');
           await executeTransaction(gs.dealer.id, -player.currentBet, 'refund', `Hoàn trả tiền cược cho ${player.name}`);
           processedTx.push(txId);
@@ -470,11 +521,11 @@ export function useXiDachRoom(
     if (gs.dealer.id === '') return;
 
     if (gs.status === 'ended') {
-      console.log('[handleDealerAFK] Phase: ended. Ensuring settlement before reset.');
+      logDebug('Phase: ended. Ensuring settlement before reset.');
       await checkAllPlayers(); // Quyết toán tiền nong cho tất cả trước khi dọn bàn
       await resetTableToEmpty();
     } else if (gs.status === 'betting') {
-      console.log('[handleDealerAFK] Phase: betting. Refunding and resetting.');
+      logDebug('Phase: betting. Refunding and resetting.');
       await refundAllPlayers(gs);
       await resetTableToEmpty();
     } else if (gs.status === 'playing') {
@@ -482,7 +533,7 @@ export function useXiDachRoom(
       const allChecked = activePlayers.length > 0 && activePlayers.every((p) => p.isChecked);
 
       if (allChecked) {
-        console.log('[handleDealerAFK] All players already checked. Resetting table.');
+        logDebug('All players already checked. Resetting table.');
         await resetTableToEmpty();
         return;
       }
@@ -490,12 +541,12 @@ export function useXiDachRoom(
       const engine = new XiDachEngine(gs);
       const dealer = gs.dealer;
       const res = engine.canDealerCheck(dealer);
-      
+
       if (res.allowed) {
-        console.log('[handleDealerAFK] Anti-Cheat: Auto-checking all players.');
+        logDebug('Anti-Cheat: Auto-checking all players.');
         await checkAllPlayers();
       } else {
-        console.log('[handleDealerAFK] Anti-Cheat: Auto-hitting for Dealer.');
+        logDebug('Anti-Cheat: Auto-hitting for Dealer.');
         await dealerHit();
       }
     }
@@ -504,7 +555,7 @@ export function useXiDachRoom(
   const handlePlayerAFK = useCallback(async (idx: number, allPresent: PresenceUser[]) => {
     const gs = gameStateRef.current;
     if (gs.turnIndex !== idx) return;
-    
+
     const player = gs.players[idx];
     if (!player.id) return;
 
@@ -514,14 +565,14 @@ export function useXiDachRoom(
     const penaltyTxId = `penalty-${player.id}-${roundKey}`;
 
     if (isOffline && gs.status === 'playing' && player.hand.length > 0 && !player.isChecked && !processedTx.includes(penaltyTxId)) {
-      console.log(`[handlePlayerAFK] Player ${player.name} is OFFLINE (txId: ${penaltyTxId}). Penalizing Rage Quit.`);
+      logDebug(`Player ${player.name} is OFFLINE (txId: ${penaltyTxId}). Penalizing Rage Quit.`);
       const bet = player.currentBet;
       try {
         await executeTransaction(player.id, -bet, 'penalty', 'Phạt thoát ván bài (AFK Offline)');
         if (gs.dealer.id) {
           await executeTransaction(gs.dealer.id, bet, 'win', `Nhà Cái hưởng tiền phạt từ ${player.name} (AFK)`);
         }
-        
+
         // Mark as processed
         processedTx.push(penaltyTxId);
 
@@ -536,7 +587,7 @@ export function useXiDachRoom(
       }
     } else {
       // Vẫn online: thực hiện autoAction bình thường (Hit/Stand)
-      console.log(`[handlePlayerAFK] Player ${player.name} is online. Performing normal Auto-Action.`);
+      logDebug(`Player ${player.name} is online. Performing normal Auto-Action.`);
       await autoAction(idx);
     }
   }, [executeTransaction, autoAction, updateRemoteState, getNextTurnState]);

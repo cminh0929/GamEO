@@ -9,13 +9,15 @@ import { Profile } from '../../src/types/platform';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Lỗi: Thiếu biến môi trường Supabase trong .env.local');
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Dùng service key nếu có để có quyền thao tác trực tiếp không bị RLS chặn
+const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
 const ROOM_ID = 'gameo-table-1';
 
 const MOCK_PROFILE: Profile = {

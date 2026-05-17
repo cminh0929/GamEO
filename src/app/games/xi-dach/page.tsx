@@ -138,33 +138,6 @@ function XiDachGame() {
     }
   }, [timeLeft, idleTimeLeft, profile, gameState, allPresent, actions]);
 
-  // ── Betting Timeout: Tự động kick người chơi ngồi ghế mà không cược quá 60s ──
-  useEffect(() => {
-    if (gameState.status !== 'betting') return;
-    if (!profile) return;
-
-    const checkBettingAFK = () => {
-      const now = Date.now();
-      const idleLimit = 60000; // 60 giây
-      
-      // Chỉ Nhà cái hoặc Admin mới có quyền Kick người không cược
-      if (gameState.dealer.id !== profile.id && !isAdmin) return;
-
-      gameState.players.forEach((p, idx) => {
-        if (p.id !== '' && p.currentBet === 0) {
-          const timeSinceLastAction = now - (gameState.lastActionAt || now);
-          if (timeSinceLastAction > idleLimit) {
-            console.log(`[bettingAFK] Kicking player ${p.name} for not betting.`);
-            actions.kickPlayer(idx);
-          }
-        }
-      });
-    };
-
-    const interval = setInterval(checkBettingAFK, 5000);
-    return () => clearInterval(interval);
-  }, [gameState.status, gameState.players, gameState.dealer.id, gameState.lastActionAt, profile, isAdmin, actions]);
-
   // ── Blocked tab overlay ──────────────────────────────────────────────────
   if (isBlocked) return <BlockedTabScreen />;
 

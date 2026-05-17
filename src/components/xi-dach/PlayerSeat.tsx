@@ -170,7 +170,7 @@ export function PlayerSeat({
             {isMe && isMyTurn && (
               <div className="action-row">
                 <button className="btn-mini hit" onClick={() => onHit(index)}>Rút</button>
-                <button className="btn-mini stand" onClick={() => onStand(index)}>Dừng</button>
+                <button className="btn-mini stand" onClick={() => onStand(index)}>Dằn</button>
               </div>
             )}
 
